@@ -18,7 +18,7 @@ App web para lanzar loops de percusión en vivo: merengue, salsa, bachata, cumbi
 
 - `fuente/index.html`: la app completa en un solo archivo (HTML, CSS y JavaScript con Web Audio).
 - `fuente/build.py`: genera la versión publicada en `docs/` (manifiesto, service worker, fuentes e íconos locales).
-- `docs/`: lo que publica GitHub Pages.
+- `docs/`: la versión lista para publicar. GitHub Pages publica una copia de esta carpeta desde la rama `gh-pages`.
 
 Después de cambiar `fuente/index.html`:
 
@@ -26,3 +26,5 @@ Después de cambiar `fuente/index.html`:
 cd fuente
 python3 build.py ../docs
 ```
+
+Luego copia el contenido de `docs/` a la rama `gh-pages` para publicarlo.
