@@ -1,5 +1,5 @@
 // Guarda la app completa en el dispositivo para que funcione sin internet.
-const CACHE = 'lanzador-95d0761662';
+const CACHE = 'lanzador-fdf124e7d3';
 const FILES = [
   './',
   'index.html',
