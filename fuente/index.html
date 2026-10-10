@@ -149,7 +149,8 @@ td.ph .cell { border-color: var(--fg); }
 .kit-row .s { font-size: .76rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kit-row .s.loaded { color: var(--wav); }
 .field select { background: var(--pad); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 100%; color: var(--fg); }
-.kitbox { grid-column: 1 / -1; }
+.kitbox, .setbox { grid-column: 1 / -1; }
+.confirm { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--orange); border-radius: 10px; font-size: .85rem; }
 .kitbox summary { cursor: pointer; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 .kitbox[open] summary { margin-bottom: 4px; }
 body.stage .lower, body.stage .settings, body.stage .hint { display: none; }
@@ -253,6 +254,14 @@ body.stage .pad.empty { visibility: hidden; }
       <div class="row-btns"><button class="btn" id="xOne">Exportar el pad seleccionado</button><button class="btn" id="xAll">Exportar todos</button></div>
       <div class="msg" id="xMsg"></div>
     </div>
+    <div class="panel setbox">
+      <h2>Tu set</h2>
+      <p>Guarda en un solo archivo tus pads, audios, drones, sonidos, colores y ajustes. Ábrelo en el celular, la tablet o la laptop para tener todo igual. También te sirve de respaldo antes de tocar.</p>
+      <div class="row-btns"><button class="btn" id="setSave">Guardar set</button><button class="btn" id="setOpen">Abrir set</button></div>
+      <div class="confirm" id="setConfirm" hidden><span id="setConfirmTxt"></span>
+        <div class="row-btns"><button class="btn lit" id="setApply">Reemplazar</button><button class="btn" id="setCancel">Cancelar</button></div></div>
+      <div class="msg" id="setMsg"></div>
+    </div>
     <details class="panel kitbox">
       <summary>Sonidos de percusión</summary>
       <p>Cambia cualquier instrumento sintetizado por tu propio golpe en WAV o MP3. Los loops lo usan al instante y conservan el tempo sin cambiar el tono.</p>
@@ -261,6 +270,7 @@ body.stage .pad.empty { visibility: hidden; }
   </section>
   <input type="file" id="padFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
   <input type="file" id="ambFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
+  <input type="file" id="setFile" accept=".zip,application/zip" hidden>
   <input type="file" id="kitFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
 </div>
 
@@ -692,7 +702,7 @@ async function onFile(file, target){
       st.sel = i; renderPads(); renderEdit();
       msg(`Cargado. Calculé ${pads[i].bpm} BPM por la duración; corrígelo si no coincide.`);
     } else {
-      kit[target.name] = { buffer, ...trimRegion(buffer, file.name), file: file.name };
+      kit[target.name] = { buffer, ...trimRegion(buffer, file.name), file: file.name, bytes };
       await idb.put('kit:' + target.name, { file: file.name, bytes });
       renderKit(); renderEdit(); hit(target.name, ctx.currentTime + .01, 1, true);
     }
@@ -713,7 +723,7 @@ async function loadAmbFiles(files){
     try {
       const bytes = await f.arrayBuffer(), buffer = await decode(bytes);
       const k = keyFromName(f.name) ?? st.key;
-      ambWav[k] = { buffer, ...trimRegion(buffer, f.name), file: f.name };
+      ambWav[k] = { buffer, ...trimRegion(buffer, f.name), file: f.name, bytes };
       await idb.put('amb:' + k, { file: f.name, bytes });
       done.push(KEY_NAMES[k]);
     } catch (e) { ambMsg(`No pude leer ${f.name}.`, true); }
@@ -729,8 +739,8 @@ async function restoreSaved(){
       const buffer = await decode(v.bytes);
       const [kind, id] = key.split(':');
       if (kind === 'pad') pads[+id] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, ...trimRegion(buffer, v.file), bytes: v.bytes, file: v.file };
-      if (kind === 'kit') kit[id] = { buffer, ...trimRegion(buffer, v.file), file: v.file };
-      if (kind === 'amb') ambWav[+id] = { buffer, ...trimRegion(buffer, v.file), file: v.file };
+      if (kind === 'kit') kit[id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
+      if (kind === 'amb') ambWav[+id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
     } catch (e) {}
   }
   renderPads(); renderEdit(); renderKit(); renderAmb();
@@ -936,6 +946,87 @@ function applyStage(){
   $('stageBtn').textContent = st.stage ? 'Salir del modo escenario' : 'Modo escenario';
 }
 $('stageBtn').onclick = () => { st.stage = !st.stage; applyStage(); save(); };
+
+// ---------- Set: llevar todo a otro dispositivo ----------
+const extOf = f => ((f || '').match(/\.(\w+)$/) || [, 'wav'])[1].toLowerCase();
+function setMsg(t, err){ $('setMsg').textContent = t; $('setMsg').classList.toggle('err', !!err); }
+async function saveSet(){
+  const files = [], enc = new TextEncoder();
+  const set = { app: 'lanzador-de-loops', version: 1, saved: new Date().toISOString(),
+    ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, quality: st.quality },
+    edits: {}, pads: {}, kit: {}, amb: {} };
+  pads.forEach((p, i) => {
+    if (p && p.wav && p.bytes) { const a = `audio/pad-${i + 1}.${extOf(p.file)}`; set.pads[i] = { name: p.name, bpm: p.bpm, follow: p.follow !== false, file: p.file, audio: a }; files.push({ name: a, data: new Uint8Array(p.bytes.slice(0)) }); }
+    else if (p && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) set.edits[i] = p.tracks;
+  });
+  for (const [k, v] of Object.entries(kit)) if (v.bytes) { const a = `audio/kit-${k}.${extOf(v.file)}`; set.kit[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
+  for (const [k, v] of Object.entries(ambWav)) if (v.bytes) { const a = `audio/drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; set.amb[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
+  files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
+  const name = `Set Lanzador ${new Date().toISOString().slice(0, 10)}.zip`;
+  try { await saveFile(name, makeZip(files)); setMsg(`Guardado: ${name} (${files.length - 1} audios).`); }
+  catch (e) { setMsg(e && e.code === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar en esta vista.', e && e.code !== 'declined'); }
+}
+async function readZip(buf){   // lee zips sin compresión o con deflate
+  const v = new DataView(buf), u8 = new Uint8Array(buf), out = {};
+  let e = buf.byteLength - 22; while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('zip');
+  let o = v.getUint32(e + 16, true);
+  for (let n = v.getUint16(e + 10, true); n > 0; n--) {
+    const method = v.getUint16(o + 10, true), size = v.getUint32(o + 20, true), nl = v.getUint16(o + 28, true), xl = v.getUint16(o + 30, true), cl = v.getUint16(o + 32, true), lo = v.getUint32(o + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(o + 46, o + 46 + nl));
+    const start = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true), raw = u8.slice(start, start + size);
+    out[name] = method === 0 ? raw : new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    o += 46 + nl + xl + cl;
+  }
+  return out;
+}
+let pendingSet = null;
+async function openSet(file){
+  try {
+    const z = await readZip(await file.arrayBuffer()), set = JSON.parse(new TextDecoder().decode(z['set.json']));
+    if (set.app !== 'lanzador-de-loops') throw new Error('set');
+    pendingSet = { set, z };
+    const n = Object.keys(set.pads).length + Object.keys(set.kit).length + Object.keys(set.amb).length;
+    $('setConfirmTxt').textContent = `Este set trae ${n} audios y sus ajustes. Va a reemplazar tus pads, sonidos y drones de este equipo.`;
+    $('setConfirm').hidden = false; setMsg('');
+  } catch (e) { setMsg('Ese archivo no es un set del Lanzador.', true); }
+}
+async function applySet(){
+  const { set, z } = pendingSet; pendingSet = null; $('setConfirm').hidden = true;
+  if (playing) stop();
+  setMsg('Cargando set…');
+  const ab = u => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength);
+  for (const [k] of await idb.all()) await idb.del(k);
+  for (const k of Object.keys(kit)) delete kit[k];
+  for (const k of Object.keys(ambWav)) delete ambWav[k];
+  BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
+  for (const [i, tr] of Object.entries(set.edits || {})) if (pads[i]) pads[i].tracks = tr;
+  let bad = 0;
+  for (const [i, m] of Object.entries(set.pads || {})) {
+    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
+      pads[+i] = { wav: true, name: m.name, bpm: m.bpm, follow: m.follow !== false, buffer, ...trimRegion(buffer, m.file), bytes, file: m.file };
+      await idb.put('pad:' + i, { name: m.name, bpm: m.bpm, follow: m.follow !== false, file: m.file, bytes }); } catch (e) { bad++; }
+  }
+  for (const [k, m] of Object.entries(set.kit || {})) {
+    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
+      kit[k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('kit:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
+  }
+  for (const [k, m] of Object.entries(set.amb || {})) {
+    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
+      ambWav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('amb:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
+  }
+  Object.assign(st, set.ajustes || {});
+  $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
+  $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
+  applyLevels(); if (ambOn) { ambStop(); ambStart(); }
+  save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
+  setMsg(bad ? `Set cargado, pero ${bad} audios no se pudieron leer.` : 'Set cargado.', !!bad);
+}
+$('setSave').onclick = saveSet;
+$('setOpen').onclick = () => $('setFile').click();
+$('setFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) openSet(f); };
+$('setApply').onclick = applySet;
+$('setCancel').onclick = () => { pendingSet = null; $('setConfirm').hidden = true; };
 
 // ---------- Inicio ----------
 if (!pads[st.sel] && st.sel >= 12) st.sel = 0;
