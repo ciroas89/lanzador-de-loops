@@ -87,7 +87,7 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 
 .knobs { display: grid; gap: 10px; background: #0003; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .knobs .lbl, .knobs label.sl { font-size: .76rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; letter-spacing: .08em; }
-.knobs output { color: var(--fg); font-variant-numeric: tabular-nums; }
+.knobs output { color: var(--fg); font-variant-numeric: tabular-nums; text-transform: none; }
 .check { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .check input { accent-color: var(--orange); width: 16px; height: 16px; flex: none; }
 .keys { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
@@ -162,9 +162,12 @@ td.ph .cell { border-color: var(--fg); }
 .kitbox { grid-column: 1 / -1; }
 .kitbox summary { cursor: pointer; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 .kitbox[open] summary { margin-bottom: 4px; }
-body.stage .lower, body.stage .settings, body.stage .legend, body.stage .hint { display: none; }
+body.stage .lower, body.stage .settings, body.stage .hint { display: none; }
 body.stage .pad.empty { visibility: hidden; }
 #stageBtn.lit { background: var(--orange); border-color: var(--orange); color: var(--on); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sw { width: 30px; height: 30px; border-radius: 8px; border: 2px solid transparent; background: var(--s); padding: 0; }
+.sw.on { border-color: var(--fg); box-shadow: 0 0 0 2px var(--bg) inset; }
 .msg { font-size: .82rem; color: var(--wav); min-height: 1.2em; }
 .msg.err { color: var(--danger); }
 
@@ -227,6 +230,7 @@ body.stage .pad.empty { visibility: hidden; }
         <input type="range" id="swing" min="50" max="75" value="50">
         <label class="check"><input type="checkbox" id="quantize" checked> Cambiar de pad al terminar el ciclo</label>
         <label class="check"><input type="checkbox" id="lockBpm"> Fijar BPM (no usar el BPM de cada pad)</label>
+        <div class="lbl"><span>Audio</span><output id="audioInfo">--</output></div>
       </div>
 
       <div class="knobs">
@@ -240,7 +244,6 @@ body.stage .pad.empty { visibility: hidden; }
     </div>
 
     <div class="padgrid" id="pads">
-      <div class="legend"><span><i style="background:var(--tropical)"></i>Tropical</span><span><i style="background:var(--gospel)"></i>Gospel</span><span><i style="background:var(--worship)"></i>Worship</span><span><i style="background:var(--wav)"></i>Tu WAV</span></div>
     </div>
   </section>
 
@@ -249,9 +252,10 @@ body.stage .pad.empty { visibility: hidden; }
     <div class="panel">
       <h2>Exportar a Ableton</h2>
       <p>Genera un .zip con cada loop en WAV, con el BPM en el nombre, y su MIDI para un Drum Rack. Descomprímelo y arrastra los archivos a Ableton.</p>
-      <div class="fields">
+      <div class="fields" style="grid-template-columns: 1fr 1.4fr">
         <label class="field">Compases<select id="xBars"><option>4</option><option selected>8</option><option>16</option></select></label>
-        <label class="check" style="align-self:end"><input type="checkbox" id="xMidi" checked> Incluir MIDI</label>
+        <label class="field">Calidad<select id="xQuality"><option value="hi">48 kHz · 24 bits (máxima)</option><option value="cd">44,1 kHz · 16 bits (CD)</option></select></label>
+        <label class="check"><input type="checkbox" id="xMidi" checked> Incluir MIDI</label>
       </div>
       <div class="row-btns"><button class="btn" id="xOne">Exportar el pad seleccionado</button><button class="btn" id="xAll">Exportar todos</button></div>
       <div class="msg" id="xMsg"></div>
@@ -306,18 +310,18 @@ const clone = o => JSON.parse(JSON.stringify(o));
 
 // ---------- Estado ----------
 const pads = BUILTIN.map(p => p && clone(p));
-const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false };
+const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi' };
 const LS = 'lanzador.v2';
 try {
   const s = JSON.parse(localStorage.getItem(LS) || '{}');
-  for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage']) if (k in s) st[k] = s[k];
+  for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','quality']) if (k in s) st[k] = s[k];
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
 } catch (e) {}
 function save(){
   try {
     const edits = {};
     pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, edits }));
+    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits }));
   } catch (e) {}
 }
 
@@ -335,8 +339,10 @@ const idb = {
 };
 
 // ---------- Audio ----------
-let ctx = new (window.AudioContext || window.webkitAudioContext)();
-const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4;
+// Frecuencia nativa del dispositivo (sin remuestreo) y limitador transparente solo como protección contra saturación.
+let ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+const comp = ctx.createDynamicsCompressor();
+comp.threshold.value = -1; comp.knee.value = 0; comp.ratio.value = 20; comp.attack.value = .002; comp.release.value = .15;
 const master = ctx.createGain(); master.connect(comp); comp.connect(ctx.destination);
 let buses = { perc: ctx.createGain(), wav: ctx.createGain(), amb: ctx.createGain() };
 for (const b of Object.values(buses)) b.connect(master);
@@ -548,15 +554,15 @@ function renderTransport(){
 }
 function padMeta(p){ return p.wav ? `WAV · ${p.bpm} BPM` : `${p.bpm} BPM<span class="mt"> · ${esc(p.meter)}</span>`; }
 function renderPads(){
-  const g = $('pads'), legend = g.querySelector('.legend');
+  const g = $('pads');
   g.innerHTML = pads.map((p, i) => {
     const cls = ['pad', p ? (p.wav ? 'wav' : p.fam) : 'empty', i === cur ? 'active' : '', i === pending ? 'queued' : '', i === st.sel ? 'sel' : ''].join(' ');
-    return `<button class="${cls}" data-i="${i}" aria-label="Pad ${i + 1}: ${p ? esc(p.name) : 'vacío'}">
+    const col = p && st.colors[i] ? ` style="--c:${st.colors[i]}"` : '';
+    return `<button class="${cls}"${col} data-i="${i}" aria-label="Pad ${i + 1}: ${p ? esc(p.name) : 'vacío'}">
       <span class="top"><span class="strip"></span>${p ? '<span class="led"></span>' : ''}</span>
       <span class="nm">${p ? esc(p.name) : '+ Cargar WAV'}</span>
       <span class="meta"><span>${p ? padMeta(p) : 'Pad vacío'}</span><span class="kb">${PAD_KEYS[i]}</span></span></button>`;
   }).join('');
-  g.appendChild(legend);
   g.classList.toggle('playing', playing && cur !== null);
 }
 function renderLcd(){
@@ -580,6 +586,14 @@ function renderAmb(){
   $('keyOut').textContent = KEY_NAMES[st.key];
 }
 let phCells = [];
+const SWATCHES = [['Naranja','#ff6a1f'],['Ámbar','#ff9b3d'],['Amarillo','#ffc61a'],['Lima','#b6e14a'],['Verde','#3fd18a'],['Turquesa','#2fc6c6'],
+  ['Azul','#4c8dff'],['Violeta','#9b6bff'],['Rosa','#ff5fa2'],['Rojo','#ff4d3d'],['Gris','#c3c8cf'],['Blanco','#f2f2f0']];
+function colorPicker(i){
+  const cur = st.colors[i];
+  return `<div class="field">Color del pad<div class="swatches">${SWATCHES.map(([n, c]) =>
+    `<button class="sw${cur === c ? ' on' : ''}" data-color="${c}" style="--s:${c}" aria-label="${n}" title="${n}"></button>`).join('')}
+    <button class="btn small" data-color="" ${cur ? '' : 'disabled'}>Original</button></div></div>`;
+}
 function renderEdit(){
   const i = st.sel, p = pads[i], el = $('editPanel');
   const head = `<h2>Pad ${i + 1} · tecla ${PAD_KEYS[i]}</h2>`;
@@ -592,11 +606,13 @@ function renderEdit(){
     el.innerHTML = head + `<h3>${esc(p.name)}</h3>
       <div class="fields"><label class="field">Nombre<input id="wName" value="${esc(p.name)}" maxlength="24"></label>
       <label class="field">BPM original<input id="wBpm" type="number" min="40" max="240" value="${p.bpm}"></label></div>
+      ${colorPicker(i)}
       <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. Al subir o bajar el BPM, un loop WAV también sube o baja de tono.</p>
       <div class="row-btns"><button class="btn" data-act="load">Reemplazar WAV</button><button class="btn" data-act="unload">${BUILTIN[i] ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   el.innerHTML = head + `<h3>${esc(p.name)}</h3>
+    ${colorPicker(i)}
     <p>Loop incluido · ${p.bpm} BPM · ${esc(p.meter)}. Suena con: ${Object.keys(p.tracks).map(k => LABELS[k] + (kit[k] ? ' (tu WAV)' : '')).join(', ')}.</p>
     <div class="row-btns"><button class="btn" data-act="load">Reemplazar por un WAV</button></div><div class="msg" id="msg"></div>`;
 }
@@ -712,6 +728,8 @@ $('kitFile').onchange = e => { const f = e.target.files[0]; e.target.value = '';
 $('editPanel').addEventListener('click', async e => {
   const cell = e.target.closest('button.cell');
   const i = st.sel, p = pads[i];
+  const sw = e.target.closest('[data-color]');
+  if (sw) { if (sw.dataset.color) st.colors[i] = sw.dataset.color; else delete st.colors[i]; save(); renderPads(); renderEdit(); return; }
   if (cell) {
     const t = cell.dataset.t, s = +cell.dataset.s, nxt = { '.':'x', 'x':'X', 'X':'.' }[p.tracks[t][s]];
     p.tracks[t] = p.tracks[t].slice(0, s) + nxt + p.tracks[t].slice(s + 1);
@@ -760,18 +778,24 @@ const GM = { kick:36, snare:38, hat:42, hatOpen:46, tom:41, clave:75, campana:56
   bongoHi:60, bongoLo:61, tamboraLow:43, tamboraRim:37, guira:69, guiro:73, rim:65 };
 const quarterBpm = (p, bpm) => p.div === 3 ? bpm * 1.5 : bpm;   // Ableton cuenta el tempo en negras
 const safeName = n => n.replace(/[\\/:*?"<>|]/g, '-').trim();
-function encodeWav(chs, sr){
-  const n = chs[0].length, buf = new ArrayBuffer(44 + n * 4), v = new DataView(buf);
+function encodeWav(chs, sr, bits){   // PCM 16 o 24 bits; a 16 bits se aplica dither TPDF
+  const bps = bits / 8, n = chs[0].length, block = 2 * bps, buf = new ArrayBuffer(44 + n * block), v = new DataView(buf);
   const str = (o, t) => { for (let k = 0; k < t.length; k++) v.setUint8(o + k, t.charCodeAt(k)); };
-  str(0, 'RIFF'); v.setUint32(4, 36 + n * 4, true); str(8, 'WAVE'); str(12, 'fmt ');
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * block, true); str(8, 'WAVE'); str(12, 'fmt ');
   v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, sr, true);
-  v.setUint32(28, sr * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 4, true);
+  v.setUint32(28, sr * block, true); v.setUint16(32, block, true); v.setUint16(34, bits, true); str(36, 'data'); v.setUint32(40, n * block, true);
+  const max = bits === 24 ? 0x7fffff : 0x7fff, lsb = 1 / max;
   let o = 44;
-  for (let k = 0; k < n; k++) for (const c of chs) { const x = Math.max(-1, Math.min(1, c[k])); v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2; }
+  for (let k = 0; k < n; k++) for (const c of chs) {
+    let x = c[k]; if (bits === 16) x += (Math.random() - Math.random()) * lsb;
+    const q = Math.round(Math.max(-1, Math.min(1, x)) * max);
+    if (bits === 24) { v.setUint8(o, q & 255); v.setUint8(o + 1, q >> 8 & 255); v.setUint8(o + 2, q >> 16 & 255); } else v.setInt16(o, q, true);
+    o += bps;
+  }
   return new Uint8Array(buf);
 }
-async function renderLoop(p, bpm, bars){
-  const bpb = p.div === 3 ? 2 : 4, len = lenOf(p), sd = 60 / bpm / p.div, steps = bars * bpb * p.div, sr = 44100;
+async function renderLoop(p, bpm, bars, hi){
+  const bpb = p.div === 3 ? 2 : 4, len = lenOf(p), sd = 60 / bpm / p.div, steps = bars * bpb * p.div, sr = hi ? 48000 : 44100;
   const loopSec = steps * sd, off = new OfflineAudioContext(2, Math.ceil((loopSec + 1.5) * sr), sr);
   const live = [ctx, buses];
   ctx = off; buses = { perc: off.createGain() }; buses.perc.gain.value = .65; buses.perc.connect(off.destination);
@@ -786,7 +810,7 @@ async function renderLoop(p, bpm, bars){
     const d = buf.getChannelData(ch), o = new Float32Array(N);
     o.set(d.subarray(0, N)); for (let k = N; k < d.length; k++) o[k - N] += d[k]; out.push(o);
   }
-  return encodeWav(out, sr);
+  return encodeWav(out, sr, hi ? 24 : 16);
 }
 function midiFile(p, bpm, bars){
   const ppq = 96, bpb = p.div === 3 ? 2 : 4, stepT = p.div === 4 ? 24 : 48, len = lenOf(p), steps = bars * bpb * p.div, ev = [];
@@ -843,7 +867,7 @@ async function exportPads(list, useCurrentBpm){
       xmsg(`Preparando ${p.name}…`);
       if (p.wav) { if (p.bytes) files.push({ name: `${nm} ${p.bpm} BPM.wav`, data: new Uint8Array(p.bytes.slice(0)) }); continue; }
       const bpm = useCurrentBpm ? st.bpm : p.bpm, qb = Math.round(quarterBpm(p, bpm));
-      files.push({ name: `${nm} ${qb} BPM.wav`, data: await renderLoop(p, bpm, bars) });
+      files.push({ name: `${nm} ${qb} BPM.wav`, data: await renderLoop(p, bpm, bars, st.quality === 'hi') });
       if (withMidi) files.push({ name: `${nm} ${qb} BPM.mid`, data: midiFile(p, bpm, bars) });
     }
     if (!files.length) { xmsg('Ese pad está vacío.', true); return; }
@@ -869,6 +893,14 @@ $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAu
 $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
 applyLevels();
 setBpm(pads[st.sel] ? pads[st.sel].bpm : 120, true);
+function showAudioInfo(){
+  const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000);
+  $('audioInfo').textContent = `${(ctx.sampleRate / 1000).toLocaleString('es')} kHz` + (ms ? ` · ${ms} ms` : '');
+}
+ctx.addEventListener('statechange', showAudioInfo);
+$('xQuality').value = st.quality;
+$('xQuality').onchange = e => { st.quality = e.target.value; save(); };
+showAudioInfo();
 applyStage(); showSwing(); renderTransport(); renderPads(); renderLcd(); renderBeats(); renderAmb(); renderEdit(); renderKit();
 requestAnimationFrame(frame);
 restoreSaved();
