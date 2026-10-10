@@ -1,5 +1,5 @@
 // Guarda la app completa en el dispositivo para que funcione sin internet.
-const CACHE = 'lanzador-73803a62d6';
+const CACHE = 'lanzador-a50749260b';
 const FILES = [
   './',
   'index.html',
@@ -25,6 +25,17 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
+  // Android: "Compartir → Lanzador de Loops" desde WhatsApp u otra app manda el set aquí.
+  if (e.request.method === 'POST' && new URL(e.request.url).searchParams.has('compartido')) {
+    e.respondWith((async () => {
+      const fd = await e.request.formData(), c = await caches.open('compartido-lanzador');
+      for (const k of await c.keys()) await c.delete(k);
+      let n = 0;
+      for (const f of fd.getAll('set')) if (f && f.size) await c.put(`compartido/${n++}?name=${encodeURIComponent(f.name || 'set.lanzador')}`, new Response(f));
+      return Response.redirect('./?abrir-compartido', 303);
+    })());
+    return;
+  }
   if (e.request.method !== 'GET') return;
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).catch(() =>
