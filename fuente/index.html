@@ -87,6 +87,10 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 .ahead .ainfo { margin-left: auto; color: var(--muted); font-size: .74rem; font-weight: 500; }
 .arow .keys { padding: 0 10px 10px; }
 .arow .aslot { padding: 0 10px 10px; }
+.arow .avol { display: grid; grid-template-columns: auto 1fr 3ch; gap: 8px; align-items: center; padding: 0 10px 10px; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.arow .avol output { color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; text-transform: none; }
+.pvol { display: grid; grid-template-columns: minmax(0, 1fr) 3ch; gap: 10px; align-items: center; }
+.pvol output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; }
 .alist .fchip.add { justify-self: start; }
 .keys { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .keys button { background: var(--pad); border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; font-size: .8rem; font-weight: 600; }
@@ -256,7 +260,7 @@ body.stage .pad.empty { visibility: hidden; }
       <div class="knobs">
         <div class="amb-head"><span class="t">Pad ambiental</span><button class="btn small" id="ambBtn">Apagado</button></div>
         <div class="alist" id="ambFolders" aria-label="Tipos de pad"></div>
-        <label class="sl" for="ambVol"><span>Volumen del pad</span><output id="ambVolOut">60</output></label>
+        <label class="sl" for="ambVol"><span>Volumen general de los pads</span><output id="ambVolOut">60</output></label>
         <input type="range" id="ambVol" min="0" max="100" value="60">
         <label class="check"><input type="checkbox" id="ambAuto" checked> Encender solo con los loops worship</label>
         <div class="amb-src settings" id="ambBox"><span id="ambSrc">Sintetizado</span>
@@ -424,17 +428,17 @@ const ambBanks = AMB_DEFAULT.map(([name, synth]) => ({ name, synth, wav: {} }));
 function ambDefaults(){   // sets y versiones anteriores tenían una sola carpeta "Pad 1"
   if (ambBanks.length === 1 && /^pad 1$/i.test(ambBanks[0].name)) { ambBanks[0].name = AMB_DEFAULT[0][0]; ambBanks[0].synth = 'warm'; AMB_DEFAULT.slice(1).forEach(([name, synth]) => ambBanks.push({ name, synth, wav: {} })); }
 }
-const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi', folder:0, ambBank:0 };
+const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, vols:{}, quality:'hi', folder:0, ambBank:0 };
 const LS = 'lanzador.v2';
 try {
   const s = JSON.parse(localStorage.getItem(LS) || '{}');
-  for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','quality']) if (k in s) st[k] = s[k];
+  for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','vols','quality']) if (k in s) st[k] = s[k];
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
   if (Array.isArray(s.folders)) s.folders.forEach((n, f) => { if (f === 0) folders[0].name = n; else folders[f] = { name: n, pads: emptyPads() }; });
   if (folders[s.folder]) st.folder = s.folder;
   if (Array.isArray(s.ambBanks)) {
     ambBanks.length = 0;
-    s.ambBanks.forEach(x => ambBanks.push(typeof x === 'string' ? { name: x, synth: 'warm', wav: {} } : { name: x.name, synth: x.synth || 'warm', wav: {} }));
+    s.ambBanks.forEach(x => ambBanks.push(typeof x === 'string' ? { name: x, synth: 'warm', vol: 100, wav: {} } : { name: x.name, synth: x.synth || 'warm', vol: x.vol ?? 100, wav: {} }));
     ambDefaults();
   }
   if (ambBanks[s.ambBank]) st.ambBank = s.ambBank;
@@ -443,7 +447,7 @@ function save(){
   try {
     const edits = {};
     folders[0].pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => ({ name: b.name, synth: b.synth })) }));
+    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, vols:st.vols, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => ({ name: b.name, synth: b.synth, vol: b.vol ?? 100 })) }));
   } catch (e) {}
 }
 
@@ -526,19 +530,21 @@ function hit(name, t, v, long){
 let amb = null, ambOn = false, ambAutoOn = false;
 let ambWav = ambBanks[st.ambBank].wav;   // carpeta elegida: tono (0-11) -> { buffer, file }, drones propios exportados desde Ableton
 const ak = (b, k) => b ? `amb:${b}-${k}` : 'amb:' + k;   // clave en IndexedDB
+const lvlOf = v => Math.pow((v ?? 100) / 100, 1.5);   // 0-100 -> ganancia, 100 = sin cambio
 function ambStart(){
   const t = ctx.currentTime, root = 48 + st.key, w = ambWav[st.key];
+  const lvl = ctx.createGain(); lvl.gain.value = lvlOf(ambBanks[st.ambBank].vol); lvl.connect(buses.amb);
   if (w) {   // WAV propio: en loop, sin seguir el BPM y con entrada suave
     const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.9, t + 2.5);
     const src = ctx.createBufferSource(); src.buffer = w.buffer; src.loop = true; src.loopStart = w.ls || 0; src.loopEnd = w.le ?? w.buffer.duration;
-    src.connect(out); out.connect(buses.amb); src.start(t, w.ls || 0);
-    amb = { out, oscs: [src] };
+    src.connect(out); out.connect(lvl); src.start(t, w.ls || 0);
+    amb = { out, lvl, bank: st.ambBank, oscs: [src] };
     return;
   }
   const kind = ambBanks[st.ambBank].synth || 'warm';
   if (kind === 'drone') {   // grave y quieto: fundamental, octava abajo y quinta, casi sin brillo
     const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.22, t + 3);
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .4; f.connect(out); out.connect(buses.amb);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .4; f.connect(out); out.connect(lvl);
     const oscs = [];
     for (const [semi, lvl, type] of [[-12, 1, 'sine'], [0, .8, 'triangle'], [7, .45, 'sine'], [12, .25, 'triangle']]) {
       for (const det of [-4, 4]) {
@@ -546,10 +552,10 @@ function ambStart(){
         const g = ctx.createGain(); g.gain.value = lvl * .5; o.connect(g); g.connect(f); o.start(t); oscs.push(o);
       }
     }
-    amb = { out, oscs }; return;
+    amb = { out, lvl, bank: st.ambBank, oscs }; return;
   }
   if (kind === 'texture') {   // aire y brillo: octavas altas que titilan sobre ruido filtrado en el tono
-    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.14, t + 3); out.connect(buses.amb);
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.14, t + 3); out.connect(lvl);
     const oscs = [];
     const nb = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
@@ -561,13 +567,13 @@ function ambStart(){
       const l = ctx.createOscillator(); l.frequency.value = rate; const lg = ctx.createGain(); lg.gain.value = lvl * .3; l.connect(lg); lg.connect(g.gain);
       o.connect(g); g.connect(out); o.start(t); l.start(t); oscs.push(o, l);
     });
-    amb = { out, oscs }; return;
+    amb = { out, lvl, bank: st.ambBank, oscs }; return;
   }
   const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.16, t + 2.5);
   const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; f.Q.value = .6;
   const lfo = ctx.createOscillator(); lfo.frequency.value = .07; const lg = ctx.createGain(); lg.gain.value = 350;
   lfo.connect(lg); lg.connect(f.frequency); lfo.start(t);
-  f.connect(out); out.connect(buses.amb);
+  f.connect(out); out.connect(lvl);
   const oscs = [lfo];
   for (const [semi, lvl] of [[0,1],[7,.7],[12,.8],[19,.45],[26,.3]]) {
     for (const det of [-8, 8]) {
@@ -575,7 +581,7 @@ function ambStart(){
       const g = ctx.createGain(); g.gain.value = lvl * .5; o.connect(g); g.connect(f); o.start(t); oscs.push(o);
     }
   }
-  amb = { out, oscs };
+  amb = { out, lvl, bank: st.ambBank, oscs };
 }
 function ambStop(){
   if (!amb) return;
@@ -623,8 +629,10 @@ function wavBoundary(){
 }
 function stopWav(t){ if (wsrc) { try { wsrc.stop(t); } catch (e) {} wsrc = null; } }
 
+function padLevel(f, i){ return lvlOf(st.vols[f ? `${f}-${i}` : String(i)]); }
 function beginPad(i, t, f = st.folder){
   cur = i; curF = f; const p = folders[f].pads[i];
+  const g = padLevel(f, i); buses.perc.gain.setValueAtTime(g, t); buses.wav.gain.setValueAtTime(g, t);
   if (!st.lockBpm && p.follow !== false) setBpm(p.bpm, true);
   st.swing = p.wav ? 50 : (p.swing || 50); $('swing').value = st.swing; showSwing();
   if (p.wav) {
@@ -677,6 +685,7 @@ async function start(i){
 function stop(){
   playing = false; clearInterval(timer); timer = null;
   stopWav(ctx.currentTime); pending = null; switchAt = null; cur = null; vq.length = 0;
+  buses.perc.gain.setValueAtTime(1, ctx.currentTime + .2); buses.wav.gain.setValueAtTime(1, ctx.currentTime + .2);   // "Probar" sonidos a volumen normal
   if (ambAutoOn) setAmb(false);
   try { wakeLock?.release(); } catch (e) {} wakeLock = null;
   renderPads(); renderLcd(); renderTransport(); setPlayhead(-1); $('lcdBar').style.width = '0';
@@ -752,7 +761,8 @@ function renderAmb(){
     return `<div class="arow${open ? ' open' : ''}${open && ambOn ? ' live' : ''}">
       <button class="ahead" data-b="${b}" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><span class="an">${esc(B.name)}</span>
         <span class="ainfo">${open ? 'Tono ' + KEY_NAMES[st.key] : ''}${n ? `${open ? ' · ' : ''}${n} ${n === 1 ? 'audio' : 'audios'}` : ''}</span></button>
-      ${open ? `<div class="keys">${KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}" aria-label="Tono ${k}">${k}</button>`).join('')}</div><div class="aslot"></div>` : ''}
+      ${open ? `<div class="keys">${KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}" aria-label="Tono ${k}">${k}</button>`).join('')}</div>
+      <label class="avol"><span>Volumen</span><input type="range" min="0" max="100" value="${B.vol ?? 100}" data-bvol="${b}" aria-label="Volumen de ${esc(B.name)}"><output>${B.vol ?? 100}</output></label><div class="aslot"></div>` : ''}
     </div>`;
   }).join('') + '<button class="fchip add" data-b="new">+ Agregar pad</button>';
   $('ambFolders').querySelector('.aslot').appendChild(ambBox);
@@ -766,6 +776,10 @@ function renderAmb(){
 let phCells = [];
 const SWATCHES = [['Naranja','#ff6a1f'],['Ámbar','#ff9b3d'],['Amarillo','#ffc61a'],['Lima','#b6e14a'],['Verde','#3fd18a'],['Turquesa','#2fc6c6'],
   ['Azul','#4c8dff'],['Violeta','#9b6bff'],['Rosa','#ff5fa2'],['Rojo','#ff4d3d'],['Gris','#c3c8cf'],['Blanco','#f2f2f0']];
+function volPicker(i){
+  const v = st.vols[ck(i)] ?? 100;
+  return `<label class="field">Volumen de este pad<span class="pvol"><input type="range" id="pVol" min="0" max="100" value="${v}" aria-label="Volumen de este pad"><output id="pVolOut">${v}</output></span></label>`;
+}
 function colorPicker(i){
   const cur = st.colors[ck(i)];
   return `<div class="field">Color del pad<div class="swatches">${SWATCHES.map(([n, c]) =>
@@ -784,14 +798,14 @@ function renderEdit(){
     el.innerHTML = head + `<h3>${esc(p.name)}</h3>
       <div class="fields"><label class="field">Nombre<input id="wName" value="${esc(p.name)}" maxlength="24"></label>
       <label class="field">BPM original<input id="wBpm" type="number" min="40" max="240" value="${p.bpm}"></label></div>
-      ${colorPicker(i)}
+      ${colorPicker(i)}${volPicker(i)}
       <label class="check"><input type="checkbox" id="wFollow"${p.follow === false ? '' : ' checked'}> Seguir el BPM (apágalo para drones y texturas)</label>
       <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. ${p.follow === false ? 'Suena siempre a su velocidad y tono originales.' : 'Al subir o bajar el BPM, este audio también sube o baja de tono.'}</p>
       <div class="row-btns"><button class="btn" data-act="load">Reemplazar audio</button><button class="btn" data-act="unload">${BUILTIN[i] && !st.folder ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   el.innerHTML = head + `<h3>${esc(p.name)}</h3>
-    ${colorPicker(i)}
+    ${colorPicker(i)}${volPicker(i)}
     <p>Loop incluido · ${p.bpm} BPM · ${esc(p.meter)}. Suena con: ${Object.keys(p.tracks).map(k => LABELS[k] + (kit[k] ? ' (tu audio)' : '')).join(', ')}.</p>
     <div class="row-btns"><button class="btn" data-act="load">Reemplazar por un audio</button></div><div class="msg" id="msg"></div>`;
 }
@@ -966,7 +980,15 @@ $('editPanel').addEventListener('click', async e => {
     renderPads(); renderEdit();
   }
 });
+$('editPanel').addEventListener('input', e => {
+  if (e.target.id !== 'pVol') return;
+  const i = st.sel, v = +e.target.value;
+  if (v === 100) delete st.vols[ck(i)]; else st.vols[ck(i)] = v;
+  $('pVolOut').textContent = v;
+  if (isCur(i) && playing) { const g = lvlOf(v), t = ctx.currentTime; buses.perc.gain.setTargetAtTime(g, t, .03); buses.wav.gain.setTargetAtTime(g, t, .03); }
+});
 $('editPanel').addEventListener('change', async e => {
+  if (e.target.id === 'pVol') { save(); return; }
   const i = st.sel, p = pads[i]; if (!p || !p.wav) return;
   if (e.target.id === 'wName') p.name = e.target.value.trim().slice(0, 24) || p.name;
   if (e.target.id === 'wFollow') {
@@ -1120,7 +1142,7 @@ function setMsg(t, err){ $('setMsg').textContent = t; $('setMsg').classList.togg
 function buildSet(){
   const files = [], enc = new TextEncoder();
   const set = { app: 'lanzador-de-loops', version: 2, saved: new Date().toISOString(),
-    ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, quality: st.quality },
+    ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, vols: st.vols, quality: st.quality },
     edits: {}, pads: {}, folders: [], kit: {}, amb: {} };
   folders.forEach((F, f) => {
     const fp = {};
@@ -1135,7 +1157,7 @@ function buildSet(){
   set.ambFolders = ambBanks.map((B, b) => {
     const am = {};
     for (const [k, v] of Object.entries(B.wav)) if (v.bytes) { const a = `audio/${b ? `pad-amb-${b + 1}-` : ''}drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; am[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
-    return { name: B.name, synth: B.synth, amb: am };
+    return { name: B.name, synth: B.synth, vol: B.vol ?? 100, amb: am };
   });
   set.amb = set.ambFolders[0].amb;   // para versiones anteriores de la app
   files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
@@ -1216,14 +1238,14 @@ async function applySet(){
       kit[k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('kit:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
   }
   for (let b = 0; b < af.length; b++) {
-    if (b) ambBanks[b] = { name: af[b].name || `Pad ${b + 1}`, synth: af[b].synth || 'warm', wav: {} }; else { ambBanks[0].name = af[0].name || 'Pad 1'; ambBanks[0].synth = af[0].synth || 'warm'; }
+    if (b) ambBanks[b] = { name: af[b].name || `Pad ${b + 1}`, synth: af[b].synth || 'warm', vol: af[b].vol ?? 100, wav: {} }; else { ambBanks[0].name = af[0].name || 'Pad 1'; ambBanks[0].synth = af[0].synth || 'warm'; ambBanks[0].vol = af[0].vol ?? 100; }
     for (const [k, m] of Object.entries(af[b].amb || {})) {
       try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
         ambBanks[b].wav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put(ak(b, +k), { file: m.file, bytes }); } catch (e) { bad++; }
     }
   }
   ambDefaults(); ambWav = ambBanks[0].wav;
-  Object.assign(st, set.ajustes || {});
+  st.vols = {}; Object.assign(st, set.ajustes || {});
   $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
   $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
   applyLevels(); if (ambOn) { ambStop(); ambStart(); }
@@ -1282,10 +1304,10 @@ $('resetYes').onclick = async () => {
   if (playing) stop();
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
-  ambBanks.length = 0; AMB_DEFAULT.forEach(([name, synth]) => ambBanks.push({ name, synth, wav: {} })); ambWav = ambBanks[0].wav; st.ambBank = 0;
+  ambBanks.length = 0; AMB_DEFAULT.forEach(([name, synth]) => ambBanks.push({ name, synth, vol: 100, wav: {} })); ambWav = ambBanks[0].wav; st.ambBank = 0;
   folders.length = 1; folders[0].name = 'Ritmos'; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
-  st.colors = {}; st.sel = 0; renderFolders(); renderFolderList();
+  st.colors = {}; st.vols = {}; st.sel = 0; renderFolders(); renderFolderList();
   if (ambOn) { ambStop(); ambStart(); }
   save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
   note('resetMsg', 'Listo, la app volvió a los loops originales.');
@@ -1299,7 +1321,7 @@ function setAmbBank(b){
   ambMsg(''); renderAmb();
 }
 function newAmbBank(){
-  ambBanks.push({ name: `Pad ${ambBanks.length + 1}`, synth: 'warm', wav: {} });
+  ambBanks.push({ name: `Pad ${ambBanks.length + 1}`, synth: 'warm', vol: 100, wav: {} });
   setAmbBank(ambBanks.length - 1);
   ambMsg(`Creé "${ambBanks[st.ambBank].name}". Ponle nombre con "Renombrar" y carga sus tonos con "Cargar audio por tono".`);
 }
@@ -1318,6 +1340,12 @@ async function deleteAmbBank(b){
   st.ambBank = -1; setAmbBank(Math.max(0, to));
   ambMsg(`Borré "${name}".`);
 }
+$('ambFolders').addEventListener('input', e => {
+  const b = e.target.dataset.bvol; if (b === undefined) return;
+  const v = +e.target.value; ambBanks[+b].vol = v; e.target.nextElementSibling.textContent = v;
+  if (amb && amb.bank === +b) amb.lvl.gain.setTargetAtTime(lvlOf(v), ctx.currentTime, .03);
+});
+$('ambFolders').addEventListener('change', e => { if (e.target.dataset.bvol !== undefined) save(); });
 $('ambFolders').onclick = e => { const kb = e.target.closest('[data-k]'); if (kb) { pickKey(+kb.dataset.k); return; } const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
 $('ambRename').onclick = () => {
   const n = prompt('Nombre de este pad', ambBanks[st.ambBank].name);
@@ -1365,6 +1393,12 @@ async function deleteFolder(f){
     if (!m) cols[k] = c; else if (+m[1] < f) cols[k] = c; else if (+m[1] > f) cols[`${+m[1] - 1}-${m[2]}`] = c;
   }
   st.colors = cols;
+  const vs = {};
+  for (const [k, c] of Object.entries(st.vols)) {
+    const m = k.match(/^(\d+)-(\d+)$/);
+    if (!m) vs[k] = c; else if (+m[1] < f) vs[k] = c; else if (+m[1] > f) vs[`${+m[1] - 1}-${m[2]}`] = c;
+  }
+  st.vols = vs;
   folders.splice(f, 1);
   if (curF > f) curF--; if (pendF > f) pendF--;
   const to = st.folder === f ? f - 1 : st.folder > f ? st.folder - 1 : st.folder;
