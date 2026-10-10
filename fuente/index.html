@@ -154,6 +154,22 @@ td.ph .cell { border-color: var(--fg); }
 .kitbox summary { cursor: pointer; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 .kitbox[open] summary { margin-bottom: 4px; }
 body.stage .lower, body.stage .settings, body.stage .hint { display: none; }
+.top-btns { display: flex; gap: 8px; }
+#optsBtn { display: inline-flex; align-items: center; gap: 6px; }
+#optsBtn svg { width: 16px; height: 16px; }
+dialog.opts { background: var(--body); color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 0; width: min(620px, calc(100% - 24px)); max-height: calc(100dvh - 32px); box-shadow: 0 30px 80px #000c; }
+dialog.opts::backdrop { background: #000a; }
+.opts-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; background: var(--body); border-bottom: 1px solid var(--line); }
+.opts-head h2 { font-family: var(--display); font-weight: 800; font-size: 1.3rem; text-transform: uppercase; margin: 0; letter-spacing: .02em; }
+.opts-tabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px 0; }
+.opts-tabs button { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; font-size: .85rem; color: var(--muted); }
+.opts-tabs button.on { background: var(--orange); border-color: var(--orange); color: var(--on); }
+.opts-body { display: grid; gap: 12px; padding: 12px 16px 18px; }
+.opts-body .panel { background: var(--body-2); }
+.opts-body .knobs { background: var(--body-2); }
+.opts-body [data-tab][hidden] { display: none; }
+.danger-btn { border-color: var(--danger); color: var(--danger); }
+@media (max-width: 560px) { dialog.opts { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; border-radius: 0; margin: 0; } }
 body.stage .pad.empty { visibility: hidden; }
 #stageBtn.lit { background: var(--orange); border-color: var(--orange); color: var(--on); }
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -180,7 +196,7 @@ body.stage .pad.empty { visibility: hidden; }
 <div class="wrap">
   <header class="top">
     <h1>Lanzador <span>de</span> Loops</h1>
-    <button class="btn small" id="stageBtn">Modo escenario</button>
+    <div class="top-btns"><button class="btn small" id="stageBtn">Modo escenario</button><button class="btn small" id="optsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>Opciones</button></div>
     <div class="hint"><kbd>Espacio</kbd> tocar/parar · pads <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> <kbd>Q</kbd>…<kbd>V</kbd> · <kbd>↑</kbd><kbd>↓</kbd> BPM · <kbd>T</kbd> tap</div>
   </header>
 
@@ -215,13 +231,6 @@ body.stage .pad.empty { visibility: hidden; }
         <output id="volOut">80</output>
       </div>
 
-      <div class="knobs settings">
-        <label class="sl" for="swing"><span>Swing</span><output id="swingOut">0%</output></label>
-        <input type="range" id="swing" min="50" max="75" value="50">
-        <label class="check"><input type="checkbox" id="quantize" checked> Cambiar de pad al terminar el ciclo</label>
-        <label class="check"><input type="checkbox" id="lockBpm"> Fijar BPM (no usar el BPM de cada pad)</label>
-        <div class="lbl"><span>Audio</span><output id="audioInfo">--</output></div>
-      </div>
 
       <div class="knobs">
         <div class="amb-head"><span class="t">Pad ambiental</span><button class="btn small" id="ambBtn">Apagado</button></div>
@@ -243,7 +252,57 @@ body.stage .pad.empty { visibility: hidden; }
 
   <section class="lower">
     <div class="panel" id="editPanel" aria-live="polite"></div>
-    <div class="panel">
+  </section>
+
+  <dialog class="opts" id="opts" aria-labelledby="optsTitle">
+    <div class="opts-head"><h2 id="optsTitle">Opciones</h2><button class="btn small" id="optsClose">Cerrar</button></div>
+    <div class="opts-tabs" id="optsTabs" role="tablist">
+      <button data-go="agregar" class="on">Agregar</button><button data-go="compartir">Compartir</button><button data-go="archivo">Exportar e importar</button><button data-go="ajustes">Ajustes</button>
+    </div>
+    <div class="opts-body">
+      <div data-tab="agregar">
+        <div class="panel">
+          <h2>Agregar loops</h2>
+          <p>Elige uno o varios WAV o MP3. Van a los pads libres en orden; para cambiar un loop que ya está, tócalo y usa "Reemplazar audio".</p>
+          <div class="row-btns"><button class="btn" id="addLoops">Agregar loops</button><button class="btn" id="addDrones">Agregar drones por tono</button></div>
+          <div class="msg" id="addMsg"></div>
+        </div>
+      </div>
+      <div data-tab="agregar">
+        <div class="panel">
+      <h2>Sonidos de percusión</h2>
+      <p>Cambia cualquier instrumento sintetizado por tu propio golpe en WAV o MP3. Los loops lo usan al instante y conservan el tempo sin cambiar el tono.</p>
+      <div class="kit" id="kit"></div>
+    </div>
+      </div>
+      <div data-tab="compartir" hidden>
+        <div class="panel">
+          <h2>Compartir tu set</h2>
+          <p>Manda tus pads, audios, drones y colores por WhatsApp, Drive o correo. Quien lo reciba lo abre con "Abrir set".</p>
+          <div class="row-btns"><button class="btn" id="shareSet">Compartir set</button></div>
+          <div class="msg" id="shareMsg"></div>
+        </div>
+      </div>
+      <div data-tab="compartir" hidden>
+        <div class="panel">
+          <h2>Compartir la app</h2>
+          <p>Pasa el enlace a la banda para que la instalen en su celular.</p>
+          <div class="row-btns"><button class="btn" id="shareApp">Compartir enlace</button></div>
+          <div class="msg" id="shareAppMsg"></div>
+        </div>
+      </div>
+      <div data-tab="archivo" hidden>
+        <div class="panel setbox">
+      <h2>Guardar y abrir tu set</h2>
+      <p>Guarda en un solo archivo tus pads, audios, drones, sonidos, colores y ajustes. Ábrelo en el celular, la tablet o la laptop para tener todo igual. También te sirve de respaldo antes de tocar.</p>
+      <div class="row-btns"><button class="btn" id="setSave">Guardar set</button><button class="btn" id="setOpen">Abrir set</button></div>
+      <div class="confirm" id="setConfirm" hidden><span id="setConfirmTxt"></span>
+        <div class="row-btns"><button class="btn lit" id="setApply">Reemplazar</button><button class="btn" id="setCancel">Cancelar</button></div></div>
+      <div class="msg" id="setMsg"></div>
+    </div>
+      </div>
+      <div data-tab="archivo" hidden>
+        <div class="panel">
       <h2>Exportar a Ableton</h2>
       <p>Genera un .zip con cada loop en WAV, con el BPM en el nombre, y su MIDI para un Drum Rack. Descomprímelo y arrastra los archivos a Ableton.</p>
       <div class="fields" style="grid-template-columns: 1fr 1.4fr">
@@ -254,21 +313,30 @@ body.stage .pad.empty { visibility: hidden; }
       <div class="row-btns"><button class="btn" id="xOne">Exportar el pad seleccionado</button><button class="btn" id="xAll">Exportar todos</button></div>
       <div class="msg" id="xMsg"></div>
     </div>
-    <div class="panel setbox">
-      <h2>Tu set</h2>
-      <p>Guarda en un solo archivo tus pads, audios, drones, sonidos, colores y ajustes. Ábrelo en el celular, la tablet o la laptop para tener todo igual. También te sirve de respaldo antes de tocar.</p>
-      <div class="row-btns"><button class="btn" id="setSave">Guardar set</button><button class="btn" id="setOpen">Abrir set</button></div>
-      <div class="confirm" id="setConfirm" hidden><span id="setConfirmTxt"></span>
-        <div class="row-btns"><button class="btn lit" id="setApply">Reemplazar</button><button class="btn" id="setCancel">Cancelar</button></div></div>
-      <div class="msg" id="setMsg"></div>
+      </div>
+      <div data-tab="ajustes" hidden>
+        <div class="knobs">
+        <label class="sl" for="swing"><span>Swing</span><output id="swingOut">0%</output></label>
+        <input type="range" id="swing" min="50" max="75" value="50">
+        <label class="check"><input type="checkbox" id="quantize" checked> Cambiar de pad al terminar el ciclo</label>
+        <label class="check"><input type="checkbox" id="lockBpm"> Fijar BPM (no usar el BPM de cada pad)</label>
+        <div class="lbl"><span>Audio</span><output id="audioInfo">--</output></div>
+      </div>
+      </div>
+      <div data-tab="ajustes" hidden>
+        <div class="panel">
+          <h2>Empezar de cero</h2>
+          <p>Borra tus audios, drones, sonidos y colores de este equipo y vuelve a los loops originales. Guarda tu set antes si lo quieres conservar.</p>
+          <div class="row-btns"><button class="btn danger-btn" id="resetAll">Borrar todo</button></div>
+          <div class="confirm" id="resetConfirm" hidden><span>¿Seguro? Esto no se puede deshacer.</span>
+            <div class="row-btns"><button class="btn lit" id="resetYes">Sí, borrar</button><button class="btn" id="resetNo">Cancelar</button></div></div>
+          <div class="msg" id="resetMsg"></div>
+        </div>
+      </div>
     </div>
-    <details class="panel kitbox">
-      <summary>Sonidos de percusión</summary>
-      <p>Cambia cualquier instrumento sintetizado por tu propio golpe en WAV o MP3. Los loops lo usan al instante y conservan el tempo sin cambiar el tono.</p>
-      <div class="kit" id="kit"></div>
-    </details>
-  </section>
+  </dialog>
   <input type="file" id="padFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
+  <input type="file" id="addFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
   <input type="file" id="ambFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
   <input type="file" id="setFile" accept=".zip,application/zip" hidden>
   <input type="file" id="kitFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
@@ -728,7 +796,7 @@ async function loadAmbFiles(files){
       done.push(KEY_NAMES[k]);
     } catch (e) { ambMsg(`No pude leer ${f.name}.`, true); }
   }
-  if (done.length) ambMsg(`Cargado en: ${done.join(', ')}.`);
+  if (done.length) { ambMsg(`Cargado en: ${done.join(', ')}.`); note('addMsg', `Drones cargados en: ${done.join(', ')}.`); }
   if (ambOn) { ambStop(); ambStart(); }
   renderAmb();
 }
@@ -824,7 +892,7 @@ $('kit').addEventListener('click', async e => {
 });
 document.addEventListener('keydown', e => {
   if (e.target.matches('input:not([type=range]):not([type=checkbox]), textarea')) return;
-  if (e.repeat) return;
+  if (e.repeat || $('opts').open) return;
   const k = e.key.toUpperCase(), idx = PAD_KEYS.indexOf(k);
   if (e.code === 'Space') { e.preventDefault(); playing ? stop() : pressPad(pads[st.sel] ? st.sel : 0); }
   else if (idx >= 0 && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); pressPad(idx); }
@@ -950,7 +1018,7 @@ $('stageBtn').onclick = () => { st.stage = !st.stage; applyStage(); save(); };
 // ---------- Set: llevar todo a otro dispositivo ----------
 const extOf = f => ((f || '').match(/\.(\w+)$/) || [, 'wav'])[1].toLowerCase();
 function setMsg(t, err){ $('setMsg').textContent = t; $('setMsg').classList.toggle('err', !!err); }
-async function saveSet(){
+function buildSet(){
   const files = [], enc = new TextEncoder();
   const set = { app: 'lanzador-de-loops', version: 1, saved: new Date().toISOString(),
     ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, quality: st.quality },
@@ -962,8 +1030,11 @@ async function saveSet(){
   for (const [k, v] of Object.entries(kit)) if (v.bytes) { const a = `audio/kit-${k}.${extOf(v.file)}`; set.kit[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
   for (const [k, v] of Object.entries(ambWav)) if (v.bytes) { const a = `audio/drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; set.amb[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
   files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
-  const name = `Set Lanzador ${new Date().toISOString().slice(0, 10)}.zip`;
-  try { await saveFile(name, makeZip(files)); setMsg(`Guardado: ${name} (${files.length - 1} audios).`); }
+  return { name: `Set Lanzador ${new Date().toISOString().slice(0, 10)}.zip`, blob: makeZip(files), files };
+}
+async function saveSet(){
+  const { name, blob, files } = buildSet();
+  try { await saveFile(name, blob); setMsg(`Guardado: ${name} (${files.length - 1} audios).`); }
   catch (e) { setMsg(e && e.code === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar en esta vista.', e && e.code !== 'declined'); }
 }
 async function readZip(buf){   // lee zips sin compresión o con deflate
@@ -1027,6 +1098,60 @@ $('setOpen').onclick = () => $('setFile').click();
 $('setFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) openSet(f); };
 $('setApply').onclick = applySet;
 $('setCancel').onclick = () => { pendingSet = null; $('setConfirm').hidden = true; };
+
+// ---------- Opciones ----------
+const APP_URL = 'https://ciroas89.github.io/lanzador-de-loops/';
+function note(id, t, err){ $(id).textContent = t; $(id).classList.toggle('err', !!err); }
+function showTab(t){
+  for (const b of $('optsTabs').children) b.classList.toggle('on', b.dataset.go === t);
+  for (const d of document.querySelectorAll('#opts [data-tab]')) d.hidden = d.dataset.tab !== t;
+}
+$('optsBtn').onclick = () => { $('opts').showModal(); };
+$('optsClose').onclick = () => $('opts').close();
+$('opts').addEventListener('click', e => { if (e.target === $('opts')) $('opts').close(); });
+$('optsTabs').onclick = e => { const b = e.target.closest('[data-go]'); if (b) showTab(b.dataset.go); };
+$('addLoops').onclick = () => $('addFile').click();
+$('addDrones').onclick = () => $('ambFile').click();
+$('addFile').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = '';
+  const free = pads.map((p, i) => p ? -1 : i).filter(i => i >= 0);
+  if (!free.length) { note('addMsg', 'No quedan pads libres. Toca un pad y usa "Reemplazar audio".', true); return; }
+  const use = fs.slice(0, free.length), done = [];
+  for (let k = 0; k < use.length; k++) { await onFile(use[k], { kind:'pad', i: free[k] }); if (pads[free[k]]) done.push(PAD_KEYS[free[k]] ? `${pads[free[k]].name} (${PAD_KEYS[free[k]]})` : pads[free[k]].name); }
+  const left = fs.length - use.length;
+  note('addMsg', (done.length ? `Agregado: ${done.join(', ')}.` : 'No pude leer esos archivos.') + (left ? ` ${left} no entraron porque no hay más pads libres.` : ''), !done.length || left > 0);
+};
+async function shareFile(name, blob){
+  const file = new File([blob], name, { type: 'application/zip' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
+  await saveFile(name, blob); return false;
+}
+$('shareSet').onclick = async () => {
+  const { name, blob } = buildSet();
+  try { const shared = await shareFile(name, blob);
+    note('shareMsg', shared ? 'Listo, set compartido.' : `Este navegador no comparte archivos directo, así que lo descargué (${name}). Mándalo desde tus descargas.`); }
+  catch (e) { note('shareMsg', e && (e.name === 'AbortError' || e.code === 'declined') ? 'Cancelado.' : 'No se pudo compartir desde esta vista.', !(e && (e.name === 'AbortError' || e.code === 'declined'))); }
+};
+$('shareApp').onclick = async () => {
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Lanzador de Loops', text: 'Lanzador de loops para la banda', url: APP_URL }); note('shareAppMsg', 'Enlace compartido.'); return; }
+    await navigator.clipboard.writeText(APP_URL); note('shareAppMsg', 'Enlace copiado: ' + APP_URL);
+  } catch (e) { note('shareAppMsg', e && e.name === 'AbortError' ? 'Cancelado.' : 'Copia este enlace: ' + APP_URL, false); }
+};
+$('resetAll').onclick = () => { $('resetConfirm').hidden = false; note('resetMsg', ''); };
+$('resetNo').onclick = () => { $('resetConfirm').hidden = true; };
+$('resetYes').onclick = async () => {
+  $('resetConfirm').hidden = true;
+  if (playing) stop();
+  for (const [k] of await idb.all()) await idb.del(k);
+  for (const k of Object.keys(kit)) delete kit[k];
+  for (const k of Object.keys(ambWav)) delete ambWav[k];
+  BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
+  st.colors = {}; st.sel = 0;
+  if (ambOn) { ambStop(); ambStart(); }
+  save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
+  note('resetMsg', 'Listo, la app volvió a los loops originales.');
+};
 
 // ---------- Inicio ----------
 if (!pads[st.sel] && st.sel >= 12) st.sel = 0;
