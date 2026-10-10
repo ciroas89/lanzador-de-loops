@@ -230,8 +230,8 @@ body.stage .pad.empty { visibility: hidden; }
         <input type="range" id="ambVol" min="0" max="100" value="60">
         <label class="check"><input type="checkbox" id="ambAuto" checked> Encender solo con los loops worship</label>
         <div class="amb-src settings"><span id="ambSrc">Sintetizado</span>
-          <div class="row-btns"><button class="btn small" id="ambLoad">Cargar WAV por tono</button><button class="btn small" id="ambClear" hidden>Quitar WAV de este tono</button></div>
-          <p class="note">Puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido.</p>
+          <div class="row-btns"><button class="btn small" id="ambLoad">Cargar audio por tono</button><button class="btn small" id="ambClear" hidden>Quitar audio de este tono</button></div>
+          <p class="note">Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido.</p>
           <div class="msg" id="ambMsg"></div></div>
       </div>
     </div>
@@ -255,13 +255,13 @@ body.stage .pad.empty { visibility: hidden; }
     </div>
     <details class="panel kitbox">
       <summary>Sonidos de percusión</summary>
-      <p>Cambia cualquier instrumento sintetizado por tu propio golpe en WAV. Los loops lo usan al instante y conservan el tempo sin cambiar el tono.</p>
+      <p>Cambia cualquier instrumento sintetizado por tu propio golpe en WAV o MP3. Los loops lo usan al instante y conservan el tempo sin cambiar el tono.</p>
       <div class="kit" id="kit"></div>
     </details>
   </section>
-  <input type="file" id="padFile" accept=".wav,audio/wav,audio/x-wav,audio/*" hidden>
-  <input type="file" id="ambFile" accept=".wav,audio/wav,audio/x-wav,audio/*" multiple hidden>
-  <input type="file" id="kitFile" accept=".wav,audio/wav,audio/x-wav,audio/*" hidden>
+  <input type="file" id="padFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
+  <input type="file" id="ambFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
+  <input type="file" id="kitFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
 </div>
 
 <script>
@@ -391,7 +391,7 @@ function hit(name, t, v, long){
   const s = kit[name];
   if (!s) return DRUMS[name](t, v, long);
   const src = ctx.createBufferSource(); src.buffer = s.buffer;
-  const g = ctx.createGain(); g.gain.value = v; src.connect(g); g.connect(buses.perc); src.start(t);
+  const g = ctx.createGain(); g.gain.value = v; src.connect(g); g.connect(buses.perc); src.start(t, s.ls || 0);
 }
 
 // Pad ambiental: drone en el tono (raíz, quinta, octava, novena) con filtro que respira.
@@ -401,8 +401,8 @@ function ambStart(){
   const t = ctx.currentTime, root = 48 + st.key, w = ambWav[st.key];
   if (w) {   // WAV propio: en loop, sin seguir el BPM y con entrada suave
     const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.9, t + 2.5);
-    const src = ctx.createBufferSource(); src.buffer = w.buffer; src.loop = true;
-    src.connect(out); out.connect(buses.amb); src.start(t);
+    const src = ctx.createBufferSource(); src.buffer = w.buffer; src.loop = true; src.loopStart = w.ls || 0; src.loopEnd = w.le ?? w.buffer.duration;
+    src.connect(out); out.connect(buses.amb); src.start(t, w.ls || 0);
     amb = { out, oscs: [src] };
     return;
   }
@@ -454,7 +454,7 @@ const lenOf = p => Object.values(p.tracks)[0].length;
 function wavRateFor(p){ return p.follow === false ? 1 : st.bpm / p.bpm; }
 function wavPos(t){ return wPos0 + (t - wT0) * wRate; }
 function wavBoundary(){
-  const now = ctx.currentTime, d = pads[cur].buffer.duration;
+  const now = ctx.currentTime, d = loopLen(pads[cur]);
   let rem = (d - (wavPos(now) % d)) / wRate;
   if (rem < .04) rem += d / wRate;
   return now + rem;
@@ -466,9 +466,9 @@ function beginPad(i, t){
   if (!st.lockBpm && p.follow !== false) setBpm(p.bpm, true);
   st.swing = p.wav ? 50 : (p.swing || 50); $('swing').value = st.swing; showSwing();
   if (p.wav) {
-    wsrc = ctx.createBufferSource(); wsrc.buffer = p.buffer; wsrc.loop = true;
+    wsrc = ctx.createBufferSource(); wsrc.buffer = p.buffer; wsrc.loop = true; wsrc.loopStart = p.ls || 0; wsrc.loopEnd = p.le ?? p.buffer.duration;
     wRate = wavRateFor(p); wsrc.playbackRate.value = wRate;
-    wsrc.connect(buses.wav); wsrc.start(t); wT0 = t; wPos0 = 0; switchAt = null;
+    wsrc.connect(buses.wav); wsrc.start(t, p.ls || 0); wT0 = t; wPos0 = 0; switchAt = null;
   } else { nextTime = t; step = 0; bar = 0; }
   if (st.ambAuto) {
     if (p.amb && !ambOn) setAmb(true, true);
@@ -554,7 +554,7 @@ function renderTransport(){
   $('play').setAttribute('aria-label', playing ? 'Parar' : 'Tocar');
   $('playIcon').innerHTML = playing ? '<rect x="6" y="6" width="12" height="12" rx="1.5"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
 }
-function padMeta(p){ return p.wav ? (p.follow === false ? 'WAV · libre' : `WAV · ${p.bpm} BPM`) : `${p.bpm} BPM<span class="mt"> · ${esc(p.meter)}</span>`; }
+function padMeta(p){ return p.wav ? (p.follow === false ? 'Audio · libre' : `Audio · ${p.bpm} BPM`) : `${p.bpm} BPM<span class="mt"> · ${esc(p.meter)}</span>`; }
 function renderPads(){
   const g = $('pads');
   g.innerHTML = pads.map((p, i) => {
@@ -562,7 +562,7 @@ function renderPads(){
     const col = p && st.colors[i] ? ` style="--c:${st.colors[i]}"` : '';
     return `<button class="${cls}"${col} data-i="${i}" aria-label="Pad ${i + 1}: ${p ? esc(p.name) : 'vacío'}">
       <span class="top"><span class="strip"></span>${p ? '<span class="led"></span>' : ''}</span>
-      <span class="nm">${p ? esc(p.name) : '+ Cargar WAV'}</span>
+      <span class="nm">${p ? esc(p.name) : '+ Cargar audio'}</span>
       <span class="meta"><span>${p ? padMeta(p) : 'Pad vacío'}</span><span class="kb">${PAD_KEYS[i]}</span></span></button>`;
   }).join('');
   g.classList.toggle('playing', playing && cur !== null);
@@ -571,7 +571,7 @@ function renderLcd(){
   const p = cur !== null ? pads[cur] : null;
   $('lcdPad').textContent = p ? `PAD ${String(cur + 1).padStart(2, '0')}` : 'PAD --';
   $('lcdName').textContent = p ? p.name : 'Listo';
-  $('lcdMeter').textContent = p ? (p.wav ? 'WAV' : p.meter) : '--';
+  $('lcdMeter').textContent = p ? (p.wav ? 'AUDIO' : p.meter) : '--';
   $('lcdNext').textContent = pending !== null ? `Siguiente: ${pads[pending].name}` : '';
   if (!p) $('lcdPos').textContent = 'Toca un pad';
   $('lcdBpm').textContent = st.bpm + ' BPM';
@@ -587,7 +587,7 @@ function renderAmb(){
   $('keys').innerHTML = KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}">${k}</button>`).join('');
   $('keyOut').textContent = KEY_NAMES[st.key];
   const n = Object.keys(ambWav).length, w = ambWav[st.key];
-  $('ambSrc').textContent = w ? `Tu WAV: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · tienes WAV en ${n} tonos` : 'Sintetizado';
+  $('ambSrc').textContent = w ? `Tu audio: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · tienes audio en ${n} tonos` : 'Sintetizado';
   $('ambClear').hidden = !w;
 }
 let phCells = [];
@@ -603,8 +603,8 @@ function renderEdit(){
   const i = st.sel, p = pads[i], el = $('editPanel');
   const head = `<h2>Pad ${i + 1} · tecla ${PAD_KEYS[i]}</h2>`;
   if (!p) {
-    el.innerHTML = head + `<h3>Pad vacío</h3><p>Carga un loop en WAV para lanzarlo desde este pad. Calculo su BPM por la duración y luego puedes corregirlo.</p>
-      <div class="row-btns"><button class="btn" data-act="load">Cargar WAV</button></div><div class="msg" id="msg"></div>`;
+    el.innerHTML = head + `<h3>Pad vacío</h3><p>Carga un loop en WAV o MP3 para lanzarlo desde este pad. Calculo su BPM por la duración y luego puedes corregirlo.</p>
+      <div class="row-btns"><button class="btn" data-act="load">Cargar audio</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   if (p.wav) {
@@ -613,19 +613,19 @@ function renderEdit(){
       <label class="field">BPM original<input id="wBpm" type="number" min="40" max="240" value="${p.bpm}"></label></div>
       ${colorPicker(i)}
       <label class="check"><input type="checkbox" id="wFollow"${p.follow === false ? '' : ' checked'}> Seguir el BPM (apágalo para drones y texturas)</label>
-      <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. ${p.follow === false ? 'Suena siempre a su velocidad y tono originales.' : 'Al subir o bajar el BPM, este WAV también sube o baja de tono.'}</p>
-      <div class="row-btns"><button class="btn" data-act="load">Reemplazar WAV</button><button class="btn" data-act="unload">${BUILTIN[i] ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
+      <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. ${p.follow === false ? 'Suena siempre a su velocidad y tono originales.' : 'Al subir o bajar el BPM, este audio también sube o baja de tono.'}</p>
+      <div class="row-btns"><button class="btn" data-act="load">Reemplazar audio</button><button class="btn" data-act="unload">${BUILTIN[i] ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   el.innerHTML = head + `<h3>${esc(p.name)}</h3>
     ${colorPicker(i)}
-    <p>Loop incluido · ${p.bpm} BPM · ${esc(p.meter)}. Suena con: ${Object.keys(p.tracks).map(k => LABELS[k] + (kit[k] ? ' (tu WAV)' : '')).join(', ')}.</p>
-    <div class="row-btns"><button class="btn" data-act="load">Reemplazar por un WAV</button></div><div class="msg" id="msg"></div>`;
+    <p>Loop incluido · ${p.bpm} BPM · ${esc(p.meter)}. Suena con: ${Object.keys(p.tracks).map(k => LABELS[k] + (kit[k] ? ' (tu audio)' : '')).join(', ')}.</p>
+    <div class="row-btns"><button class="btn" data-act="load">Reemplazar por un audio</button></div><div class="msg" id="msg"></div>`;
 }
 function renderKit(){
   $('kit').innerHTML = Object.entries(LABELS).map(([k, l]) => `<div class="kit-row">
     <div style="min-width:0"><div class="n">${l}</div><div class="s${kit[k] ? ' loaded' : ''}">${kit[k] ? esc(kit[k].file) : 'Sintetizado'}</div></div>
-    <div class="row-btns"><button class="btn small" data-kit="${k}" data-act="try">Probar</button><button class="btn small" data-kit="${k}" data-act="load">WAV</button>${kit[k] ? `<button class="btn small" data-kit="${k}" data-act="clear" aria-label="Quitar WAV de ${l}">×</button>` : ''}</div></div>`).join('');
+    <div class="row-btns"><button class="btn small" data-kit="${k}" data-act="try">Probar</button><button class="btn small" data-kit="${k}" data-act="load">Cargar</button>${kit[k] ? `<button class="btn small" data-kit="${k}" data-act="clear" aria-label="Quitar WAV de ${l}">×</button>` : ''}</div></div>`).join('');
 }
 function setPlayhead(s){
   phCells.forEach(td => td.classList.remove('ph')); phCells = [];
@@ -635,7 +635,7 @@ function frame(){
   if (playing && cur !== null) {
     const p = pads[cur], now = ctx.currentTime;
     if (p.wav) {
-      const d = p.buffer.duration, pos = Math.max(0, wavPos(now));
+      const d = loopLen(p), pos = Math.max(0, wavPos(now));
       $('lcdBar').style.width = ((pos % d) / d * 100).toFixed(1) + '%';
       $('lcdPos').textContent = `Vuelta ${Math.floor(pos / d) + 1}`;
       pulse(Math.floor(pos / (60 / p.bpm)));
@@ -667,6 +667,16 @@ function guessBpm(dur){
   return Math.round(best || 120);
 }
 async function decode(bytes){ return await ctx.decodeAudioData(bytes.slice(0)); }
+// Un MP3 puede traer relleno en silencio digital al inicio y al final; lo recorto para que el loop no tenga hueco.
+function trimRegion(buffer, file){
+  const len = buffer.length, sr = buffer.sampleRate;
+  if (/\.wav$/i.test(file || '')) return { ls: 0, le: buffer.duration };
+  const max = Math.round(sr * .08), th = 1e-6, peak = k => { let m = 0; for (let c = 0; c < buffer.numberOfChannels; c++) m = Math.max(m, Math.abs(buffer.getChannelData(c)[k])); return m; };
+  let a = 0; while (a < max && peak(a) < th) a++;
+  let b = len - 1; while (len - 1 - b < max && b > a && peak(b) < th) b--;
+  return { ls: a / sr, le: (b + 1) / sr };
+}
+const loopLen = o => (o.le ?? o.buffer.duration) - (o.ls || 0);
 async function onFile(file, target){
   if (!file) return;
   try {
@@ -676,16 +686,17 @@ async function onFile(file, target){
     if (target.kind === 'pad') {
       const i = target.i, wasCur = cur === i && playing;
       if (wasCur) stop();
-      pads[i] = { wav:true, name: base || 'Mi loop', bpm: guessBpm(buffer.duration), buffer, bytes, file: file.name };
+      const r = trimRegion(buffer, file.name);
+      pads[i] = { wav:true, name: base || 'Mi loop', bpm: guessBpm(r.le - r.ls), buffer, ...r, bytes, file: file.name };
       await idb.put('pad:' + i, { name: pads[i].name, bpm: pads[i].bpm, file: file.name, bytes });
       st.sel = i; renderPads(); renderEdit();
       msg(`Cargado. Calculé ${pads[i].bpm} BPM por la duración; corrígelo si no coincide.`);
     } else {
-      kit[target.name] = { buffer, file: file.name };
+      kit[target.name] = { buffer, ...trimRegion(buffer, file.name), file: file.name };
       await idb.put('kit:' + target.name, { file: file.name, bytes });
       renderKit(); renderEdit(); hit(target.name, ctx.currentTime + .01, 1, true);
     }
-  } catch (e) { msg('No pude leer ese archivo. Prueba con un WAV de 16 o 24 bits.', true); }
+  } catch (e) { msg('No pude leer ese archivo. Prueba con un WAV o un MP3.', true); }
 }
 const NOTE_BASE = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
 function keyFromName(name){   // "Pad C#.wav", "Drone_Eb", "Textura (F#m)" -> 0..11
@@ -702,7 +713,7 @@ async function loadAmbFiles(files){
     try {
       const bytes = await f.arrayBuffer(), buffer = await decode(bytes);
       const k = keyFromName(f.name) ?? st.key;
-      ambWav[k] = { buffer, file: f.name };
+      ambWav[k] = { buffer, ...trimRegion(buffer, f.name), file: f.name };
       await idb.put('amb:' + k, { file: f.name, bytes });
       done.push(KEY_NAMES[k]);
     } catch (e) { ambMsg(`No pude leer ${f.name}.`, true); }
@@ -717,9 +728,9 @@ async function restoreSaved(){
     try {
       const buffer = await decode(v.bytes);
       const [kind, id] = key.split(':');
-      if (kind === 'pad') pads[+id] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, bytes: v.bytes, file: v.file };
-      if (kind === 'kit') kit[id] = { buffer, file: v.file };
-      if (kind === 'amb') ambWav[+id] = { buffer, file: v.file };
+      if (kind === 'pad') pads[+id] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, ...trimRegion(buffer, v.file), bytes: v.bytes, file: v.file };
+      if (kind === 'kit') kit[id] = { buffer, ...trimRegion(buffer, v.file), file: v.file };
+      if (kind === 'amb') ambWav[+id] = { buffer, ...trimRegion(buffer, v.file), file: v.file };
     } catch (e) {}
   }
   renderPads(); renderEdit(); renderKit(); renderAmb();
@@ -904,7 +915,7 @@ async function exportPads(list, useCurrentBpm){
       const p = pads[i]; if (!p) continue;
       const nm = safeName(p.name);
       xmsg(`Preparando ${p.name}…`);
-      if (p.wav) { if (p.bytes) files.push({ name: `${nm} ${p.bpm} BPM.wav`, data: new Uint8Array(p.bytes.slice(0)) }); continue; }
+      if (p.wav) { if (p.bytes) files.push({ name: `${nm} ${p.bpm} BPM.${(p.file.match(/\.(\w+)$/) || [, 'wav'])[1].toLowerCase()}`, data: new Uint8Array(p.bytes.slice(0)) }); continue; }
       const bpm = useCurrentBpm ? st.bpm : p.bpm, qb = Math.round(quarterBpm(p, bpm));
       files.push({ name: `${nm} ${qb} BPM.wav`, data: await renderLoop(p, bpm, bars, st.quality === 'hi') });
       if (withMidi) files.push({ name: `${nm} ${qb} BPM.mid`, data: midiFile(p, bpm, bars) });
