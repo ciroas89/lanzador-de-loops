@@ -101,6 +101,16 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 #ambBtn.lit { background: var(--worship); border-color: var(--worship); color: var(--on); }
 
 /* Pads */
+.padcol { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.folders { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.folders::-webkit-scrollbar { display: none; }
+.fchip { flex: none; background: var(--pad); border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: .85rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; min-height: 34px; }
+.fchip.on { background: var(--yellow); border-color: var(--yellow); color: var(--on); }
+.fchip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.fchip.add { border-style: dashed; }
+body.stage .fchip.add { display: none; }
+.frow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.frow input { background: var(--pad); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 100%; color: var(--fg); }
 .padgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-content: start; }
 .pad { --c: var(--muted); aspect-ratio: 1; max-width: 100%; border-radius: 14px; border: 1px solid var(--line); background: var(--pad); box-shadow: inset 0 1px 0 #ffffff0d; text-align: left; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: background .08s, box-shadow .08s; min-width: 0; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .pad:active { transform: scale(.97); }
@@ -194,7 +204,7 @@ body.stage .pad.empty { visibility: hidden; }
 @media (max-width: 860px) {
   .device { grid-template-columns: 1fr; padding: 14px; }
   .side { display: contents; }
-  .lcd { order: 1; } .transport { order: 2; } .padgrid { order: 3; } .volume { order: 4; } .knobs { order: 5; }
+  .lcd { order: 1; } .transport { order: 2; } .padcol { order: 3; } .volume { order: 4; } .knobs { order: 5; }
   .lower { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
@@ -260,7 +270,10 @@ body.stage .pad.empty { visibility: hidden; }
       </div>
     </div>
 
-    <div class="padgrid" id="pads">
+    <div class="padcol">
+      <div class="folders" id="folders" aria-label="Carpetas de pads"></div>
+      <div class="padgrid" id="pads">
+      </div>
     </div>
   </section>
 
@@ -276,8 +289,17 @@ body.stage .pad.empty { visibility: hidden; }
     <div class="opts-body">
       <div data-tab="agregar">
         <div class="panel">
+          <h2>Carpetas</h2>
+          <p>Cada carpeta tiene sus 16 pads, por ejemplo una por canción o por servicio. Cámbialas tocando su nombre arriba de los pads o con las flechas ← →.</p>
+          <div class="kit" id="folderList"></div>
+          <div class="row-btns"><button class="btn" id="folderNew">Nueva carpeta</button></div>
+          <div class="msg" id="folderMsg"></div>
+        </div>
+      </div>
+      <div data-tab="agregar">
+        <div class="panel">
           <h2>Agregar loops</h2>
-          <p>Elige uno o varios WAV o MP3. Van a los pads libres en orden; para cambiar un loop que ya está, tócalo y usa "Reemplazar audio".</p>
+          <p>Elige uno o varios WAV o MP3. Van a los pads libres de la carpeta abierta, en orden; para cambiar un loop que ya está, tócalo y usa "Reemplazar audio".</p>
           <div class="row-btns"><button class="btn" id="addLoops">Agregar loops</button><button class="btn" id="addDrones">Agregar drones por tono</button></div>
           <div class="msg" id="addMsg"></div>
         </div>
@@ -308,7 +330,8 @@ body.stage .pad.empty { visibility: hidden; }
       <div data-tab="archivo" hidden>
         <div class="panel setbox">
       <h2>Guardar y abrir tu set</h2>
-      <p>Guarda en un solo archivo tus pads, audios, drones, sonidos, colores y ajustes. Ábrelo en el celular, la tablet o la laptop para tener todo igual. También te sirve de respaldo antes de tocar.</p>
+      <p>Guarda en un solo archivo .lanzador tus carpetas, pads, audios, drones, sonidos, colores y ajustes. Ábrelo en el celular, la tablet o la laptop para tener todo igual. También te sirve de respaldo antes de tocar.</p>
+      <p>Para abrirlo, toca "Abrir set" y elige el archivo .lanzador (o un .zip de una versión anterior). Si el celular lo descomprimió y ves un set.json, elige el set.json junto con sus audios.</p>
       <div class="row-btns"><button class="btn" id="setSave">Guardar set</button><button class="btn" id="setOpen">Abrir set</button></div>
       <div class="confirm" id="setConfirm" hidden><span id="setConfirmTxt"></span>
         <div class="row-btns"><button class="btn lit" id="setApply">Reemplazar</button><button class="btn" id="setCancel">Cancelar</button></div></div>
@@ -352,7 +375,7 @@ body.stage .pad.empty { visibility: hidden; }
   <input type="file" id="padFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
   <input type="file" id="addFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
   <input type="file" id="ambFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" multiple hidden>
-  <input type="file" id="setFile" accept=".zip,application/zip" hidden>
+  <input type="file" id="setFile" multiple hidden>
   <input type="file" id="kitFile" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/mp3,audio/*" hidden>
 </div>
 
@@ -395,19 +418,23 @@ const LABELS = { kick:'Bombo', snare:'Redoblante', hat:'Hi-hat', hatOpen:'Hi-hat
 const clone = o => JSON.parse(JSON.stringify(o));
 
 // ---------- Estado ----------
-const pads = BUILTIN.map(p => p && clone(p));
-const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi' };
+let pads = BUILTIN.map(p => p && clone(p));
+const emptyPads = () => Array(16).fill(null);
+const folders = [{ name: 'Ritmos', pads }];
+const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi', folder:0 };
 const LS = 'lanzador.v2';
 try {
   const s = JSON.parse(localStorage.getItem(LS) || '{}');
   for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','quality']) if (k in s) st[k] = s[k];
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
+  if (Array.isArray(s.folders)) s.folders.forEach((n, f) => { if (f === 0) folders[0].name = n; else folders[f] = { name: n, pads: emptyPads() }; });
+  if (folders[s.folder]) st.folder = s.folder;
 } catch (e) {}
 function save(){
   try {
     const edits = {};
-    pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits }));
+    folders[0].pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
+    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name) }));
   } catch (e) {}
 }
 
@@ -538,6 +565,11 @@ function applyLevels(){
 
 // ---------- Secuenciador ----------
 let playing = false, cur = null, pending = null, timer = null;
+let curF = 0, pendF = 0;   // carpeta del pad que suena y del que espera
+const CP = () => folders[curF].pads[cur];
+const pk = (f, i) => f ? `pad:${f}-${i}` : 'pad:' + i;   // clave en IndexedDB
+const ck = i => st.folder ? `${st.folder}-${i}` : String(i);   // clave de color
+const isCur = i => cur === i && curF === st.folder;
 let nextTime = 0, step = 0, bar = 0;               // patrón
 let wsrc = null, wT0 = 0, wPos0 = 0, wRate = 1, switchAt = null;   // loop WAV
 const vq = [];  // cola visual de pasos
@@ -546,15 +578,15 @@ const lenOf = p => Object.values(p.tracks)[0].length;
 function wavRateFor(p){ return p.follow === false ? 1 : st.bpm / p.bpm; }
 function wavPos(t){ return wPos0 + (t - wT0) * wRate; }
 function wavBoundary(){
-  const now = ctx.currentTime, d = loopLen(pads[cur]);
+  const now = ctx.currentTime, d = loopLen(CP());
   let rem = (d - (wavPos(now) % d)) / wRate;
   if (rem < .04) rem += d / wRate;
   return now + rem;
 }
 function stopWav(t){ if (wsrc) { try { wsrc.stop(t); } catch (e) {} wsrc = null; } }
 
-function beginPad(i, t){
-  cur = i; const p = pads[i];
+function beginPad(i, t, f = st.folder){
+  cur = i; curF = f; const p = folders[f].pads[i];
   if (!st.lockBpm && p.follow !== false) setBpm(p.bpm, true);
   st.swing = p.wav ? 50 : (p.swing || 50); $('swing').value = st.swing; showSwing();
   if (p.wav) {
@@ -573,11 +605,11 @@ function scheduler(){
   const horizon = ctx.currentTime + .12;
   let guard = 0;
   while (playing && guard++ < 64) {
-    const p = pads[cur];
+    const p = CP();
     if (p.wav) {
       if (pending !== null && switchAt === null) switchAt = wavBoundary();
       if (switchAt !== null && switchAt < horizon) {
-        const t = switchAt, n = pending; switchAt = null; pending = null; stopWav(t); beginPad(n, t); continue;
+        const t = switchAt, n = pending, nf = pendF; switchAt = null; pending = null; stopWav(t); beginPad(n, t, nf); continue;
       }
       return;
     }
@@ -591,7 +623,7 @@ function scheduler(){
     nextTime += sd; step++;
     if (step >= lenOf(p)) {
       step = 0; bar++;
-      if (pending !== null) { const n = pending; pending = null; beginPad(n, nextTime); }
+      if (pending !== null) { const n = pending, nf = pendF; pending = null; beginPad(n, nextTime, nf); }
     }
   }
 }
@@ -618,11 +650,11 @@ function pressPad(i){
   if (!p && st.stage) return;
   if (!p) { renderPads(); renderEdit(); loadTarget = { kind:'pad', i }; $('padFile').click(); return; }
   if (!playing) { start(i); renderEdit(); return; }
-  if (i === cur) { if (pending !== null) { pending = null; switchAt = null; renderPads(); renderLcd(); } else stop(); renderEdit(); return; }
-  if (st.quantize) { pending = i; switchAt = null; }
+  if (isCur(i)) { if (pending !== null) { pending = null; switchAt = null; renderPads(); renderLcd(); } else stop(); renderEdit(); return; }
+  if (st.quantize) { pending = i; pendF = st.folder; switchAt = null; }
   else {
     const t = ctx.currentTime + .03;
-    if (pads[cur].wav) stopWav(t);
+    if (CP().wav) stopWav(t);
     beginPad(i, t);
   }
   renderPads(); renderLcd(); renderEdit();
@@ -634,8 +666,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '
 function setBpm(v, quiet){
   st.bpm = Math.max(40, Math.min(240, Math.round(v)));
   $('bpm').value = st.bpm; $('bpmVal').textContent = st.bpm; $('lcdBpm').textContent = st.bpm + ' BPM';
-  if (playing && cur !== null && pads[cur].wav && wsrc) {
-    const now = ctx.currentTime; wPos0 = wavPos(now); wT0 = now; wRate = wavRateFor(pads[cur]);
+  if (playing && cur !== null && CP().wav && wsrc) {
+    const now = ctx.currentTime; wPos0 = wavPos(now); wT0 = now; wRate = wavRateFor(CP());
     wsrc.playbackRate.setValueAtTime(wRate, now); switchAt = null;
   }
   if (!quiet) save();
@@ -650,26 +682,27 @@ function padMeta(p){ return p.wav ? (p.follow === false ? 'Audio · libre' : `Au
 function renderPads(){
   const g = $('pads');
   g.innerHTML = pads.map((p, i) => {
-    const cls = ['pad', p ? (p.wav ? 'wav' : p.fam) : 'empty', i === cur ? 'active' : '', i === pending ? 'queued' : '', i === st.sel ? 'sel' : ''].join(' ');
-    const col = p && st.colors[i] ? ` style="--c:${st.colors[i]}"` : '';
+    const cls = ['pad', p ? (p.wav ? 'wav' : p.fam) : 'empty', isCur(i) ? 'active' : '', i === pending && pendF === st.folder ? 'queued' : '', i === st.sel ? 'sel' : ''].join(' ');
+    const col = p && st.colors[ck(i)] ? ` style="--c:${st.colors[ck(i)]}"` : '';
     return `<button class="${cls}"${col} data-i="${i}" aria-label="Pad ${i + 1}: ${p ? esc(p.name) : 'vacío'}">
       <span class="top"><span class="strip"></span>${p ? '<span class="led"></span>' : ''}</span>
       <span class="nm">${p ? esc(p.name) : '+ Cargar audio'}</span>
       <span class="meta"><span>${p ? padMeta(p) : 'Pad vacío'}</span><span class="kb">${PAD_KEYS[i]}</span></span></button>`;
   }).join('');
   g.classList.toggle('playing', playing && cur !== null);
+  renderFolders();
 }
 function renderLcd(){
-  const p = cur !== null ? pads[cur] : null;
+  const p = cur !== null ? CP() : null;
   $('lcdPad').textContent = p ? `PAD ${String(cur + 1).padStart(2, '0')}` : 'PAD --';
   $('lcdName').textContent = p ? p.name : 'Listo';
   $('lcdMeter').textContent = p ? (p.wav ? 'AUDIO' : p.meter) : '--';
-  $('lcdNext').textContent = pending !== null ? `Siguiente: ${pads[pending].name}` : '';
+  $('lcdNext').textContent = pending !== null ? `Siguiente: ${folders[pendF].pads[pending].name}` : '';
   if (!p) $('lcdPos').textContent = 'Toca un pad';
   $('lcdBpm').textContent = st.bpm + ' BPM';
 }
 function renderBeats(){
-  const p = cur !== null ? pads[cur] : pads[st.sel];
+  const p = cur !== null ? CP() : pads[st.sel];
   const n = p && !p.wav ? lenOf(p) / p.div : 4;
   $('beats').innerHTML = Array.from({ length: n }, (_, i) => `<span class="beat${i === 0 ? ' one' : ''}"></span>`).join('');
 }
@@ -686,7 +719,7 @@ let phCells = [];
 const SWATCHES = [['Naranja','#ff6a1f'],['Ámbar','#ff9b3d'],['Amarillo','#ffc61a'],['Lima','#b6e14a'],['Verde','#3fd18a'],['Turquesa','#2fc6c6'],
   ['Azul','#4c8dff'],['Violeta','#9b6bff'],['Rosa','#ff5fa2'],['Rojo','#ff4d3d'],['Gris','#c3c8cf'],['Blanco','#f2f2f0']];
 function colorPicker(i){
-  const cur = st.colors[i];
+  const cur = st.colors[ck(i)];
   return `<div class="field">Color del pad<div class="swatches">${SWATCHES.map(([n, c]) =>
     `<button class="sw${cur === c ? ' on' : ''}" data-color="${c}" style="--s:${c}" aria-label="${n}" title="${n}"></button>`).join('')}
     <button class="btn small" data-color="" ${cur ? '' : 'disabled'}>Original</button></div></div>`;
@@ -706,7 +739,7 @@ function renderEdit(){
       ${colorPicker(i)}
       <label class="check"><input type="checkbox" id="wFollow"${p.follow === false ? '' : ' checked'}> Seguir el BPM (apágalo para drones y texturas)</label>
       <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. ${p.follow === false ? 'Suena siempre a su velocidad y tono originales.' : 'Al subir o bajar el BPM, este audio también sube o baja de tono.'}</p>
-      <div class="row-btns"><button class="btn" data-act="load">Reemplazar audio</button><button class="btn" data-act="unload">${BUILTIN[i] ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
+      <div class="row-btns"><button class="btn" data-act="load">Reemplazar audio</button><button class="btn" data-act="unload">${BUILTIN[i] && !st.folder ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   el.innerHTML = head + `<h3>${esc(p.name)}</h3>
@@ -721,11 +754,11 @@ function renderKit(){
 }
 function setPlayhead(s){
   phCells.forEach(td => td.classList.remove('ph')); phCells = [];
-  if (s >= 0 && cur === st.sel && $('grid')) { phCells = [...$('grid').querySelectorAll(`td[data-s="${s}"]`)]; phCells.forEach(td => td.classList.add('ph')); }
+  if (s >= 0 && isCur(st.sel) && $('grid')) { phCells = [...$('grid').querySelectorAll(`td[data-s="${s}"]`)]; phCells.forEach(td => td.classList.add('ph')); }
 }
 function frame(){
   if (playing && cur !== null) {
-    const p = pads[cur], now = ctx.currentTime;
+    const p = CP(), now = ctx.currentTime;
     if (p.wav) {
       const d = loopLen(p), pos = Math.max(0, wavPos(now));
       $('lcdBar').style.width = ((pos % d) / d * 100).toFixed(1) + '%';
@@ -776,11 +809,11 @@ async function onFile(file, target){
     const buffer = await decode(bytes);
     const base = file.name.replace(/\.[^.]+$/, '').slice(0, 24);
     if (target.kind === 'pad') {
-      const i = target.i, wasCur = cur === i && playing;
+      const i = target.i, wasCur = isCur(i) && playing;
       if (wasCur) stop();
       const r = trimRegion(buffer, file.name);
       pads[i] = { wav:true, name: base || 'Mi loop', bpm: guessBpm(r.le - r.ls), buffer, ...r, bytes, file: file.name };
-      await idb.put('pad:' + i, { name: pads[i].name, bpm: pads[i].bpm, file: file.name, bytes });
+      await idb.put(pk(st.folder, i), { name: pads[i].name, bpm: pads[i].bpm, file: file.name, bytes });
       st.sel = i; renderPads(); renderEdit();
       msg(`Cargado. Calculé ${pads[i].bpm} BPM por la duración; corrígelo si no coincide.`);
     } else {
@@ -820,7 +853,9 @@ async function restoreSaved(){
     try {
       const buffer = await decode(v.bytes);
       const [kind, id] = key.split(':');
-      if (kind === 'pad') pads[+id] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, ...trimRegion(buffer, v.file), bytes: v.bytes, file: v.file };
+      if (kind === 'pad') { const [f, i] = id.includes('-') ? id.split('-').map(Number) : [0, +id];
+        if (!folders[f]) continue;
+        folders[f].pads[i] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, ...trimRegion(buffer, v.file), bytes: v.bytes, file: v.file }; }
       if (kind === 'kit') kit[id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
       if (kind === 'amb') ambWav[+id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
     } catch (e) {}
@@ -866,7 +901,7 @@ $('editPanel').addEventListener('click', async e => {
   const cell = e.target.closest('button.cell');
   const i = st.sel, p = pads[i];
   const sw = e.target.closest('[data-color]');
-  if (sw) { if (sw.dataset.color) st.colors[i] = sw.dataset.color; else delete st.colors[i]; save(); renderPads(); renderEdit(); return; }
+  if (sw) { if (sw.dataset.color) st.colors[ck(i)] = sw.dataset.color; else delete st.colors[ck(i)]; save(); renderPads(); renderEdit(); return; }
   if (cell) {
     const t = cell.dataset.t, s = +cell.dataset.s, nxt = { '.':'x', 'x':'X', 'X':'.' }[p.tracks[t][s]];
     p.tracks[t] = p.tracks[t].slice(0, s) + nxt + p.tracks[t].slice(s + 1);
@@ -878,8 +913,8 @@ $('editPanel').addEventListener('click', async e => {
   if (act === 'load') { loadTarget = { kind:'pad', i }; $('padFile').click(); }
   if (act === 'reset') { p.tracks = clone(BUILTIN[i].tracks); save(); renderEdit(); }
   if (act === 'unload') {
-    if (cur === i && playing) stop();
-    pads[i] = BUILTIN[i] ? clone(BUILTIN[i]) : null; await idb.del('pad:' + i);
+    if (isCur(i) && playing) stop();
+    pads[i] = BUILTIN[i] && !st.folder ? clone(BUILTIN[i]) : null; await idb.del(pk(st.folder, i));
     renderPads(); renderEdit();
   }
 });
@@ -888,13 +923,13 @@ $('editPanel').addEventListener('change', async e => {
   if (e.target.id === 'wName') p.name = e.target.value.trim().slice(0, 24) || p.name;
   if (e.target.id === 'wFollow') {
     p.follow = e.target.checked;
-    if (cur === i && wsrc) { const now = ctx.currentTime; wPos0 = wavPos(now); wT0 = now; wRate = wavRateFor(p); wsrc.playbackRate.setValueAtTime(wRate, now); switchAt = null; }
+    if (isCur(i) && wsrc) { const now = ctx.currentTime; wPos0 = wavPos(now); wT0 = now; wRate = wavRateFor(p); wsrc.playbackRate.setValueAtTime(wRate, now); switchAt = null; }
     renderEdit();
   }
-  if (e.target.id === 'wBpm') { const b = +e.target.value; if (b >= 40 && b <= 240) p.bpm = Math.round(b); if (cur === i) setBpm(st.lockBpm ? st.bpm : p.bpm); }
+  if (e.target.id === 'wBpm') { const b = +e.target.value; if (b >= 40 && b <= 240) p.bpm = Math.round(b); if (isCur(i)) setBpm(st.lockBpm ? st.bpm : p.bpm); }
   const rec = { name: p.name, bpm: p.bpm, file: p.file, follow: p.follow !== false };
-  const all = await idb.all(); const old = all.find(([k]) => k === 'pad:' + i);
-  if (old) await idb.put('pad:' + i, { ...old[1], ...rec });
+  const all = await idb.all(); const old = all.find(([k]) => k === pk(st.folder, i));
+  if (old) await idb.put(pk(st.folder, i), { ...old[1], ...rec });
   renderPads(); renderLcd();
 });
 $('kit').addEventListener('click', async e => {
@@ -912,6 +947,8 @@ document.addEventListener('keydown', e => {
   else if (idx >= 0 && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); pressPad(idx); }
   else if (e.code === 'ArrowUp') { e.preventDefault(); setBpm(st.bpm + (e.shiftKey ? 5 : 1)); }
   else if (e.code === 'ArrowDown') { e.preventDefault(); setBpm(st.bpm - (e.shiftKey ? 5 : 1)); }
+  else if (e.code === 'ArrowRight' && folders.length > 1) { e.preventDefault(); setFolder((st.folder + 1) % folders.length); }
+  else if (e.code === 'ArrowLeft' && folders.length > 1) { e.preventDefault(); setFolder((st.folder + folders.length - 1) % folders.length); }
   else if (k === 'T') tap();
 });
 
@@ -1034,20 +1071,27 @@ const extOf = f => ((f || '').match(/\.(\w+)$/) || [, 'wav'])[1].toLowerCase();
 function setMsg(t, err){ $('setMsg').textContent = t; $('setMsg').classList.toggle('err', !!err); }
 function buildSet(){
   const files = [], enc = new TextEncoder();
-  const set = { app: 'lanzador-de-loops', version: 1, saved: new Date().toISOString(),
+  const set = { app: 'lanzador-de-loops', version: 2, saved: new Date().toISOString(),
     ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, quality: st.quality },
-    edits: {}, pads: {}, kit: {}, amb: {} };
-  pads.forEach((p, i) => {
-    if (p && p.wav && p.bytes) { const a = `audio/pad-${i + 1}.${extOf(p.file)}`; set.pads[i] = { name: p.name, bpm: p.bpm, follow: p.follow !== false, file: p.file, audio: a }; files.push({ name: a, data: new Uint8Array(p.bytes.slice(0)) }); }
-    else if (p && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) set.edits[i] = p.tracks;
+    edits: {}, pads: {}, folders: [], kit: {}, amb: {} };
+  folders.forEach((F, f) => {
+    const fp = {};
+    F.pads.forEach((p, i) => {
+      if (p && p.wav && p.bytes) { const a = `audio/${f ? `carpeta-${f + 1}-` : ''}pad-${i + 1}.${extOf(p.file)}`; fp[i] = { name: p.name, bpm: p.bpm, follow: p.follow !== false, file: p.file, audio: a }; files.push({ name: a, data: new Uint8Array(p.bytes.slice(0)) }); }
+      else if (!f && p && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) set.edits[i] = p.tracks;
+    });
+    set.folders.push({ name: F.name, pads: fp });
   });
+  set.pads = set.folders[0].pads;   // para versiones anteriores de la app
   for (const [k, v] of Object.entries(kit)) if (v.bytes) { const a = `audio/kit-${k}.${extOf(v.file)}`; set.kit[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
   for (const [k, v] of Object.entries(ambWav)) if (v.bytes) { const a = `audio/drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; set.amb[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
   files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
-  return { name: `Set Lanzador ${new Date().toISOString().slice(0, 10)}.zip`, blob: makeZip(files), files };
+  // Extensión propia: así el celular no lo descomprime solo y WhatsApp lo manda tal cual.
+  return { name: `Set Lanzador ${new Date().toISOString().slice(0, 10)}.lanzador`, blob: new Blob([makeZip(files)], { type: 'application/octet-stream' }), files };
 }
 async function saveSet(){
-  const { name, blob, files } = buildSet();
+  let { name, blob, files } = buildSet();
+  if (await downloadsP) { name = name.replace(/\.lanzador$/, '.zip'); blob = new Blob([blob], { type: 'application/zip' }); }   // la vista de Claude solo descarga .zip
   try { await saveFile(name, blob); setMsg(`Guardado: ${name} (${files.length - 1} audios).`); }
   catch (e) { setMsg(e && e.code === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar en esta vista.', e && e.code !== 'declined'); }
 }
@@ -1066,50 +1110,71 @@ async function readZip(buf){   // lee zips sin compresión o con deflate
   return out;
 }
 let pendingSet = null;
-async function openSet(file){
+const base = n => n.split('/').pop().toLowerCase();
+async function openSet(list){
+  list = [...list].filter(Boolean);
+  if (!list.length) return;
   try {
-    const z = await readZip(await file.arrayBuffer()), set = JSON.parse(new TextDecoder().decode(z['set.json']));
-    if (set.app !== 'lanzador-de-loops') throw new Error('set');
-    pendingSet = { set, z };
-    const n = Object.keys(set.pads).length + Object.keys(set.kit).length + Object.keys(set.amb).length;
-    $('setConfirmTxt').textContent = `Este set trae ${n} audios y sus ajustes. Va a reemplazar tus pads, sonidos y drones de este equipo.`;
+    const z = {}; let set = null, prefix = '';
+    for (const f of list) {
+      const u8 = new Uint8Array(await f.arrayBuffer());
+      if (u8[0] === 0x50 && u8[1] === 0x4b) Object.assign(z, await readZip(u8.buffer));   // .lanzador o .zip (aunque WhatsApp le cambie el nombre)
+      else if (/\.json$/i.test(f.name) || String.fromCharCode(...u8.subarray(0, 8)).trim().replace(/^﻿|^ï»¿/, '').startsWith('{')) set = JSON.parse(new TextDecoder().decode(u8).replace(/^﻿/, ''));
+      else z['suelto/' + f.name] = u8;   // audios elegidos junto al set.json
+    }
+    if (!set) {
+      const k = Object.keys(z).find(n => base(n) === 'set.json');
+      if (k) { set = JSON.parse(new TextDecoder().decode(z[k])); prefix = k.slice(0, -'set.json'.length); }
+    }
+    if (!set || set.app !== 'lanzador-de-loops') throw new Error('set');
+    const audio = path => z[prefix + path] || z[path] || z[Object.keys(z).find(n => base(n) === base(path))];
+    const fl = set.folders || [{ name: 'Ritmos', pads: set.pads || {} }];
+    const all = [...fl.flatMap(F => Object.values(F.pads || {})), ...Object.values(set.kit || {}), ...Object.values(set.amb || {})];
+    const missing = all.filter(m => !audio(m.audio)).length;
+    pendingSet = { set, fl, audio };
+    $('setConfirmTxt').textContent = `Este set trae ${fl.length} ${fl.length === 1 ? 'carpeta' : 'carpetas'} y ${all.length - missing} ${all.length - missing === 1 ? 'audio' : 'audios'}. Va a reemplazar tus carpetas, pads, sonidos y drones de este equipo.`
+      + (missing ? ` ${missing === 1 ? 'Falta 1 audio' : `Faltan ${missing} audios`}: si quieres todo, elige el archivo .lanzador completo.` : '');
     $('setConfirm').hidden = false; setMsg('');
-  } catch (e) { setMsg('Ese archivo no es un set del Lanzador.', true); }
+  } catch (e) { setMsg('Ese archivo no es un set del Lanzador. Elige el archivo .lanzador (o .zip) que guardaste.', true); }
 }
 async function applySet(){
-  const { set, z } = pendingSet; pendingSet = null; $('setConfirm').hidden = true;
+  const { set, fl, audio } = pendingSet; pendingSet = null; $('setConfirm').hidden = true;
   if (playing) stop();
   setMsg('Cargando set…');
   const ab = u => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength);
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
   for (const k of Object.keys(ambWav)) delete ambWav[k];
+  folders.length = 1; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
   for (const [i, tr] of Object.entries(set.edits || {})) if (pads[i]) pads[i].tracks = tr;
   let bad = 0;
-  for (const [i, m] of Object.entries(set.pads || {})) {
-    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
-      pads[+i] = { wav: true, name: m.name, bpm: m.bpm, follow: m.follow !== false, buffer, ...trimRegion(buffer, m.file), bytes, file: m.file };
-      await idb.put('pad:' + i, { name: m.name, bpm: m.bpm, follow: m.follow !== false, file: m.file, bytes }); } catch (e) { bad++; }
+  for (let f = 0; f < fl.length; f++) {
+    if (f) folders[f] = { name: fl[f].name || `Carpeta ${f + 1}`, pads: emptyPads() }; else folders[0].name = fl[0].name || 'Ritmos';
+    for (const [i, m] of Object.entries(fl[f].pads || {})) {
+      try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
+        folders[f].pads[+i] = { wav: true, name: m.name, bpm: m.bpm, follow: m.follow !== false, buffer, ...trimRegion(buffer, m.file), bytes, file: m.file };
+        await idb.put(pk(f, +i), { name: m.name, bpm: m.bpm, follow: m.follow !== false, file: m.file, bytes }); } catch (e) { bad++; }
+    }
   }
   for (const [k, m] of Object.entries(set.kit || {})) {
-    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
+    try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
       kit[k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('kit:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
   }
   for (const [k, m] of Object.entries(set.amb || {})) {
-    try { const bytes = ab(z[m.audio]), buffer = await decode(bytes);
+    try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
       ambWav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('amb:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
   }
   Object.assign(st, set.ajustes || {});
   $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
   $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
   applyLevels(); if (ambOn) { ambStop(); ambStart(); }
-  save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
-  setMsg(bad ? `Set cargado, pero ${bad} audios no se pudieron leer.` : 'Set cargado.', !!bad);
+  save(); renderFolders(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
+  setMsg(bad ? `Set cargado, pero ${bad === 1 ? 'faltó 1 audio' : `faltaron ${bad} audios`}.` : 'Set cargado.', !!bad);
 }
 $('setSave').onclick = saveSet;
 $('setOpen').onclick = () => $('setFile').click();
-$('setFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) openSet(f); };
+$('setFile').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; openSet(fs); };
 $('setApply').onclick = applySet;
 $('setCancel').onclick = () => { pendingSet = null; $('setConfirm').hidden = true; };
 
@@ -1136,7 +1201,7 @@ $('addFile').onchange = async e => {
   note('addMsg', (done.length ? `Agregado: ${done.join(', ')}.` : 'No pude leer esos archivos.') + (left ? ` ${left} no entraron porque no hay más pads libres.` : ''), !done.length || left > 0);
 };
 async function shareFile(name, blob){
-  const file = new File([blob], name, { type: 'application/zip' });
+  const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
   await saveFile(name, blob); return false;
 }
@@ -1160,12 +1225,88 @@ $('resetYes').onclick = async () => {
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
   for (const k of Object.keys(ambWav)) delete ambWav[k];
+  folders.length = 1; folders[0].name = 'Ritmos'; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
-  st.colors = {}; st.sel = 0;
+  st.colors = {}; st.sel = 0; renderFolders(); renderFolderList();
   if (ambOn) { ambStop(); ambStart(); }
   save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
   note('resetMsg', 'Listo, la app volvió a los loops originales.');
 };
+
+// ---------- Carpetas ----------
+function renderFolders(){
+  $('folders').innerHTML = folders.map((F, f) => `<button class="fchip${f === st.folder ? ' on' : ''}" data-f="${f}" aria-pressed="${f === st.folder}">${playing && cur !== null && curF === f && f !== st.folder ? '<span class="dot" aria-label="sonando"></span>' : ''}${esc(F.name)}</button>`).join('')
+    + '<button class="fchip add" data-f="new" aria-label="Nueva carpeta">+ Carpeta</button>';
+}
+function renderFolderList(){
+  $('folderList').innerHTML = folders.map((F, f) => `<div class="frow"><input data-fname="${f}" value="${esc(F.name)}" maxlength="20" aria-label="Nombre de la carpeta ${f + 1}">
+    ${f ? `<button class="btn small" data-fdel="${f}">Borrar</button>` : '<span class="hint">Principal</span>'}</div>`).join('');
+}
+function setFolder(f){
+  if (!folders[f] || f === st.folder) return;
+  st.folder = f; pads = folders[f].pads;
+  if (!pads[st.sel] && pads.some(Boolean)) st.sel = pads.findIndex(Boolean);
+  save(); renderFolders(); renderPads(); renderEdit(); renderLcd();
+}
+function newFolder(){
+  folders.push({ name: `Carpeta ${folders.length + 1}`, pads: emptyPads() });
+  setFolder(folders.length - 1); renderFolderList();
+  note('folderMsg', `Creé "${folders[st.folder].name}". Agrega loops con "Agregar loops" o tocando un pad vacío.`);
+}
+async function deleteFolder(f){
+  if (!f || !folders[f]) return;
+  const n = folders[f].pads.filter(Boolean).length;
+  if (n && !confirm(`¿Borrar la carpeta "${folders[f].name}" y ${n === 1 ? 'su loop' : `sus ${n} loops`}?`)) return;
+  if (playing && curF === f) stop();
+  if (pending !== null && pendF === f) { pending = null; switchAt = null; }
+  const name = folders[f].name;
+  // Borra sus audios y corre las carpetas siguientes un lugar.
+  for (const [k, v] of await idb.all()) {
+    const m = k.match(/^pad:(\d+)-(\d+)$/); if (!m) continue;
+    const g = +m[1], i = +m[2];
+    if (g === f) await idb.del(k);
+    else if (g > f) { await idb.put(pk(g - 1, i), v); await idb.del(k); }
+  }
+  const cols = {};
+  for (const [k, c] of Object.entries(st.colors)) {
+    const m = k.match(/^(\d+)-(\d+)$/);
+    if (!m) cols[k] = c; else if (+m[1] < f) cols[k] = c; else if (+m[1] > f) cols[`${+m[1] - 1}-${m[2]}`] = c;
+  }
+  st.colors = cols;
+  folders.splice(f, 1);
+  if (curF > f) curF--; if (pendF > f) pendF--;
+  const to = st.folder === f ? f - 1 : st.folder > f ? st.folder - 1 : st.folder;
+  st.folder = -1; setFolder(to); renderFolderList();
+  note('folderMsg', `Borré la carpeta "${name}".`);
+}
+$('folders').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; b.dataset.f === 'new' ? newFolder() : setFolder(+b.dataset.f); };
+$('folderNew').onclick = newFolder;
+$('folderList').addEventListener('change', e => {
+  const f = e.target.dataset.fname; if (f === undefined) return;
+  folders[+f].name = e.target.value.trim().slice(0, 20) || folders[+f].name; e.target.value = folders[+f].name;
+  save(); renderFolders();
+});
+$('folderList').addEventListener('click', e => { const b = e.target.closest('[data-fdel]'); if (b) deleteFolder(+b.dataset.fdel); });
+$('optsBtn').addEventListener('click', renderFolderList);
+
+// ---------- Abrir un set compartido desde otra app (Android) o desde el explorador de archivos ----------
+async function openShared(){
+  if (!/abrir-compartido/.test(location.search)) return;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const c = await caches.open('compartido-lanzador'), files = [];
+    for (const req of await c.keys()) {
+      const r = await c.match(req), name = decodeURIComponent(new URL(req.url).searchParams.get('name') || 'set.lanzador');
+      files.push(new File([await r.blob()], name)); await c.delete(req);
+    }
+    if (files.length) { $('opts').showModal(); renderFolderList(); showTab('archivo'); await openSet(files); }
+  } catch (e) {}
+}
+if ('launchQueue' in window) launchQueue.setConsumer(async p => {
+  if (!p.files || !p.files.length) return;
+  const files = await Promise.all(p.files.map(h => h.getFile()));
+  $('opts').showModal(); renderFolderList(); showTab('archivo'); openSet(files);
+});
 
 // ---------- Inicio ----------
 if (!pads[st.sel] && st.sel >= 12) st.sel = 0;
@@ -1181,9 +1322,10 @@ ctx.addEventListener('statechange', showAudioInfo);
 $('xQuality').value = st.quality;
 $('xQuality').onchange = e => { st.quality = e.target.value; save(); };
 showAudioInfo();
-applyStage(); showSwing(); renderTransport(); renderPads(); renderLcd(); renderBeats(); renderAmb(); renderEdit(); renderKit();
+pads = folders[st.folder].pads;
+applyStage(); showSwing(); renderTransport(); renderFolders(); renderPads(); renderLcd(); renderBeats(); renderAmb(); renderEdit(); renderKit();
 requestAnimationFrame(frame);
-restoreSaved();
+restoreSaved().then(() => { pads = folders[st.folder].pads; renderPads(); renderEdit(); openShared(); });
 })();
 </script>
 <script>
