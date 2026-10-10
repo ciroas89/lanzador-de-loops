@@ -90,6 +90,17 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 .knobs output { color: var(--fg); font-variant-numeric: tabular-nums; text-transform: none; }
 .check { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .check input { accent-color: var(--orange); width: 16px; height: 16px; flex: none; }
+.alist { display: grid; gap: 6px; }
+.arow { border: 1px solid var(--line); border-radius: 10px; background: var(--pad); }
+.arow.open { border-color: var(--yellow); background: #0003; }
+.ahead { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; border: 0; padding: 9px 10px; font-weight: 700; font-size: .92rem; text-align: left; color: var(--fg); min-height: 40px; }
+.ahead .chev { width: 1em; color: var(--muted); }
+.arow.open .ahead .an { color: var(--yellow); }
+.arow.live .ahead .chev { color: var(--orange); }
+.ahead .ainfo { margin-left: auto; color: var(--muted); font-size: .74rem; font-weight: 500; }
+.arow .keys { padding: 0 10px 10px; }
+.arow .aslot { padding: 0 10px 10px; }
+.alist .fchip.add { justify-self: start; }
 .keys { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .keys button { background: var(--pad); border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; font-size: .8rem; font-weight: 600; }
 .keys button.has { box-shadow: inset 0 -3px 0 var(--orange); }
@@ -258,16 +269,14 @@ body.stage .pad.empty { visibility: hidden; }
 
       <div class="knobs">
         <div class="amb-head"><span class="t">Pad ambiental</span><button class="btn small" id="ambBtn">Apagado</button></div>
-        <div class="folders" id="ambFolders" aria-label="Carpetas de pads ambientales"></div>
-        <div class="lbl"><span>Tono</span><output id="keyOut">C</output></div>
-        <div class="keys" id="keys"></div>
+        <div class="alist" id="ambFolders" aria-label="Tipos de pad"></div>
         <label class="sl" for="ambVol"><span>Volumen del pad</span><output id="ambVolOut">60</output></label>
         <input type="range" id="ambVol" min="0" max="100" value="60">
         <label class="check"><input type="checkbox" id="ambAuto" checked> Encender solo con los loops worship</label>
-        <div class="amb-src settings"><span id="ambSrc">Sintetizado</span>
+        <div class="amb-src settings" id="ambBox"><span id="ambSrc">Sintetizado</span>
           <div class="row-btns"><button class="btn small" id="ambLoad">Cargar audio por tono</button><button class="btn small" id="ambClear" hidden>Quitar audio de este tono</button></div>
-          <div class="row-btns"><button class="btn small" id="ambRename">Renombrar carpeta</button><button class="btn small" id="ambDel" hidden>Borrar carpeta</button></div>
-          <p class="note">Cada carpeta es un sonido (por ejemplo "Pad cálido" o "Shimmer") con sus 12 tonos. Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido. Los tonos sin audio suenan con el pad sintetizado.</p>
+          <div class="row-btns"><button class="btn small" id="ambRename">Renombrar</button><button class="btn small" id="ambDel" hidden>Borrar este pad</button></div>
+          <p class="note">Carga aquí tus audios de este pad, uno por tono. Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido. Los tonos sin audio suenan con un sonido sintetizado de este tipo.</p>
           <div class="msg" id="ambMsg"></div></div>
       </div>
     </div>
@@ -423,7 +432,12 @@ const clone = o => JSON.parse(JSON.stringify(o));
 let pads = BUILTIN.map(p => p && clone(p));
 const emptyPads = () => Array(16).fill(null);
 const folders = [{ name: 'Ritmos', pads }];
-const ambBanks = [{ name: 'Pad 1', wav: {} }];   // carpetas del pad ambiental, cada una con sus tonos
+// Tipos de pad ambiental, cada uno con sus 12 tonos. synth = sonido de respaldo para los tonos sin audio.
+const AMB_DEFAULT = [['Pad ambiental', 'warm'], ['Drone pad', 'drone'], ['Pad textura', 'texture']];
+const ambBanks = AMB_DEFAULT.map(([name, synth]) => ({ name, synth, wav: {} }));
+function ambDefaults(){   // sets y versiones anteriores tenían una sola carpeta "Pad 1"
+  if (ambBanks.length === 1 && /^pad 1$/i.test(ambBanks[0].name)) { ambBanks[0].name = AMB_DEFAULT[0][0]; ambBanks[0].synth = 'warm'; AMB_DEFAULT.slice(1).forEach(([name, synth]) => ambBanks.push({ name, synth, wav: {} })); }
+}
 const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi', folder:0, ambBank:0 };
 const LS = 'lanzador.v2';
 try {
@@ -432,14 +446,18 @@ try {
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
   if (Array.isArray(s.folders)) s.folders.forEach((n, f) => { if (f === 0) folders[0].name = n; else folders[f] = { name: n, pads: emptyPads() }; });
   if (folders[s.folder]) st.folder = s.folder;
-  if (Array.isArray(s.ambBanks)) s.ambBanks.forEach((n, b) => { if (b === 0) ambBanks[0].name = n; else ambBanks[b] = { name: n, wav: {} }; });
+  if (Array.isArray(s.ambBanks)) {
+    ambBanks.length = 0;
+    s.ambBanks.forEach(x => ambBanks.push(typeof x === 'string' ? { name: x, synth: 'warm', wav: {} } : { name: x.name, synth: x.synth || 'warm', wav: {} }));
+    ambDefaults();
+  }
   if (ambBanks[s.ambBank]) st.ambBank = s.ambBank;
 } catch (e) {}
 function save(){
   try {
     const edits = {};
     folders[0].pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => b.name) }));
+    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => ({ name: b.name, synth: b.synth })) }));
   } catch (e) {}
 }
 
@@ -530,6 +548,34 @@ function ambStart(){
     src.connect(out); out.connect(buses.amb); src.start(t, w.ls || 0);
     amb = { out, oscs: [src] };
     return;
+  }
+  const kind = ambBanks[st.ambBank].synth || 'warm';
+  if (kind === 'drone') {   // grave y quieto: fundamental, octava abajo y quinta, casi sin brillo
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.22, t + 3);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .4; f.connect(out); out.connect(buses.amb);
+    const oscs = [];
+    for (const [semi, lvl, type] of [[-12, 1, 'sine'], [0, .8, 'triangle'], [7, .45, 'sine'], [12, .25, 'triangle']]) {
+      for (const det of [-4, 4]) {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = 440 * Math.pow(2, (root + semi - 69) / 12); o.detune.value = det;
+        const g = ctx.createGain(); g.gain.value = lvl * .5; o.connect(g); g.connect(f); o.start(t); oscs.push(o);
+      }
+    }
+    amb = { out, oscs }; return;
+  }
+  if (kind === 'texture') {   // aire y brillo: octavas altas que titilan sobre ruido filtrado en el tono
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.14, t + 3); out.connect(buses.amb);
+    const oscs = [];
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 440 * Math.pow(2, (root + 24 - 69) / 12); bp.Q.value = 18;
+    const ng = ctx.createGain(); ng.gain.value = 1.4; noise.connect(bp); bp.connect(ng); ng.connect(out); noise.start(t); oscs.push(noise);
+    [[12, .5, .13], [19, .35, .21], [24, .3, .17], [31, .18, .29]].forEach(([semi, lvl, rate]) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 440 * Math.pow(2, (root + semi - 69) / 12);
+      const g = ctx.createGain(); g.gain.value = lvl * .35;
+      const l = ctx.createOscillator(); l.frequency.value = rate; const lg = ctx.createGain(); lg.gain.value = lvl * .3; l.connect(lg); lg.connect(g.gain);
+      o.connect(g); g.connect(out); o.start(t); l.start(t); oscs.push(o, l);
+    });
+    amb = { out, oscs }; return;
   }
   const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.16, t + 2.5);
   const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; f.Q.value = .6;
@@ -712,16 +758,23 @@ function renderBeats(){
   const n = p && !p.wav ? lenOf(p) / p.div : 4;
   $('beats').innerHTML = Array.from({ length: n }, (_, i) => `<span class="beat${i === 0 ? ' one' : ''}"></span>`).join('');
 }
+const ambBox = document.getElementById('ambBox');
 function renderAmb(){
-  $('ambFolders').innerHTML = ambBanks.map((B, b) => `<button class="fchip${b === st.ambBank ? ' on' : ''}" data-b="${b}" aria-pressed="${b === st.ambBank}">${esc(B.name)}<small style="opacity:.7">${Object.keys(B.wav).length ? ' · ' + Object.keys(B.wav).length : ''}</small></button>`).join('')
-    + '<button class="fchip add" data-b="new" aria-label="Nueva carpeta de pad">+ Carpeta</button>';
+  ambBox.remove();
+  $('ambFolders').innerHTML = ambBanks.map((B, b) => {
+    const open = b === st.ambBank, n = Object.keys(B.wav).length;
+    return `<div class="arow${open ? ' open' : ''}${open && ambOn ? ' live' : ''}">
+      <button class="ahead" data-b="${b}" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><span class="an">${esc(B.name)}</span>
+        <span class="ainfo">${open ? 'Tono ' + KEY_NAMES[st.key] : ''}${n ? `${open ? ' · ' : ''}${n} ${n === 1 ? 'audio' : 'audios'}` : ''}</span></button>
+      ${open ? `<div class="keys">${KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}" aria-label="Tono ${k}">${k}</button>`).join('')}</div><div class="aslot"></div>` : ''}
+    </div>`;
+  }).join('') + '<button class="fchip add" data-b="new">+ Agregar pad</button>';
+  $('ambFolders').querySelector('.aslot').appendChild(ambBox);
   $('ambDel').hidden = st.ambBank === 0;
   $('ambBtn').textContent = ambOn ? 'Encendido' : 'Apagado';
   $('ambBtn').classList.toggle('lit', ambOn);
-  $('keys').innerHTML = KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}">${k}</button>`).join('');
-  $('keyOut').textContent = KEY_NAMES[st.key];
   const n = Object.keys(ambWav).length, w = ambWav[st.key];
-  $('ambSrc').textContent = w ? `Tu audio: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · esta carpeta tiene ${n === 1 ? '1 tono' : `${n} tonos`}` : 'Sintetizado (esta carpeta no tiene audios)';
+  $('ambSrc').textContent = w ? `Tu audio: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · este pad tiene ${n === 1 ? '1 audio' : `${n} audios`}` : 'Sintetizado (todavía sin audios propios)';
   $('ambClear').hidden = !w;
 }
 let phCells = [];
@@ -898,7 +951,7 @@ $('swing').oninput = e => { st.swing = +e.target.value; showSwing(); };
 $('quantize').onchange = e => { st.quantize = e.target.checked; save(); };
 $('lockBpm').onchange = e => { st.lockBpm = e.target.checked; save(); };
 $('ambBtn').onclick = () => setAmb(!ambOn);
-$('keys').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.key = +b.dataset.k; save(); if (ambOn) { ambStop(); ambStart(); } renderAmb(); };
+function pickKey(k){ st.key = k; save(); if (ambOn) { ambStop(); ambStart(); } renderAmb(); }
 $('ambLoad').onclick = () => $('ambFile').click();
 $('ambFile').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; loadAmbFiles(fs); };
 $('ambClear').onclick = async () => { delete ambWav[st.key]; await idb.del(ak(st.ambBank, st.key)); if (ambOn) { ambStop(); ambStart(); } ambMsg(''); renderAmb(); };
@@ -1096,7 +1149,7 @@ function buildSet(){
   set.ambFolders = ambBanks.map((B, b) => {
     const am = {};
     for (const [k, v] of Object.entries(B.wav)) if (v.bytes) { const a = `audio/${b ? `pad-amb-${b + 1}-` : ''}drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; am[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
-    return { name: B.name, amb: am };
+    return { name: B.name, synth: B.synth, amb: am };
   });
   set.amb = set.ambFolders[0].amb;   // para versiones anteriores de la app
   files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
@@ -1177,13 +1230,13 @@ async function applySet(){
       kit[k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('kit:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
   }
   for (let b = 0; b < af.length; b++) {
-    if (b) ambBanks[b] = { name: af[b].name || `Pad ${b + 1}`, wav: {} }; else ambBanks[0].name = af[0].name || 'Pad 1';
+    if (b) ambBanks[b] = { name: af[b].name || `Pad ${b + 1}`, synth: af[b].synth || 'warm', wav: {} }; else { ambBanks[0].name = af[0].name || 'Pad 1'; ambBanks[0].synth = af[0].synth || 'warm'; }
     for (const [k, m] of Object.entries(af[b].amb || {})) {
       try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
         ambBanks[b].wav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put(ak(b, +k), { file: m.file, bytes }); } catch (e) { bad++; }
     }
   }
-  ambWav = ambBanks[0].wav;
+  ambDefaults(); ambWav = ambBanks[0].wav;
   Object.assign(st, set.ajustes || {});
   $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
   $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
@@ -1243,7 +1296,7 @@ $('resetYes').onclick = async () => {
   if (playing) stop();
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
-  ambBanks.length = 1; ambBanks[0] = { name: 'Pad 1', wav: {} }; ambWav = ambBanks[0].wav; st.ambBank = 0;
+  ambBanks.length = 0; AMB_DEFAULT.forEach(([name, synth]) => ambBanks.push({ name, synth, wav: {} })); ambWav = ambBanks[0].wav; st.ambBank = 0;
   folders.length = 1; folders[0].name = 'Ritmos'; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
   st.colors = {}; st.sel = 0; renderFolders(); renderFolderList();
@@ -1260,14 +1313,14 @@ function setAmbBank(b){
   ambMsg(''); renderAmb();
 }
 function newAmbBank(){
-  ambBanks.push({ name: `Pad ${ambBanks.length + 1}`, wav: {} });
+  ambBanks.push({ name: `Pad ${ambBanks.length + 1}`, synth: 'warm', wav: {} });
   setAmbBank(ambBanks.length - 1);
-  ambMsg(`Creé "${ambBanks[st.ambBank].name}". Carga sus tonos con "Cargar audio por tono".`);
+  ambMsg(`Creé "${ambBanks[st.ambBank].name}". Ponle nombre con "Renombrar" y carga sus tonos con "Cargar audio por tono".`);
 }
 async function deleteAmbBank(b){
   if (!b || !ambBanks[b]) return;
   const n = Object.keys(ambBanks[b].wav).length;
-  if (n && !confirm(`¿Borrar la carpeta "${ambBanks[b].name}" y ${n === 1 ? 'su tono' : `sus ${n} tonos`}?`)) return;
+  if (n && !confirm(`¿Borrar "${ambBanks[b].name}" y ${n === 1 ? 'su audio' : `sus ${n} audios`}?`)) return;
   const name = ambBanks[b].name;
   for (const [k, v] of await idb.all()) {
     const m = k.match(/^amb:(\d+)-(\d+)$/); if (!m) continue;
@@ -1277,11 +1330,11 @@ async function deleteAmbBank(b){
   ambBanks.splice(b, 1);
   const to = st.ambBank >= b ? st.ambBank - 1 : st.ambBank;
   st.ambBank = -1; setAmbBank(Math.max(0, to));
-  ambMsg(`Borré la carpeta "${name}".`);
+  ambMsg(`Borré "${name}".`);
 }
-$('ambFolders').onclick = e => { const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
+$('ambFolders').onclick = e => { const kb = e.target.closest('[data-k]'); if (kb) { pickKey(+kb.dataset.k); return; } const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
 $('ambRename').onclick = () => {
-  const n = prompt('Nombre de la carpeta', ambBanks[st.ambBank].name);
+  const n = prompt('Nombre de este pad', ambBanks[st.ambBank].name);
   if (n && n.trim()) { ambBanks[st.ambBank].name = n.trim().slice(0, 20); save(); renderAmb(); }
 };
 $('ambDel').onclick = () => deleteAmbBank(st.ambBank);
