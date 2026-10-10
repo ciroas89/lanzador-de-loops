@@ -258,6 +258,7 @@ body.stage .pad.empty { visibility: hidden; }
 
       <div class="knobs">
         <div class="amb-head"><span class="t">Pad ambiental</span><button class="btn small" id="ambBtn">Apagado</button></div>
+        <div class="folders" id="ambFolders" aria-label="Carpetas de pads ambientales"></div>
         <div class="lbl"><span>Tono</span><output id="keyOut">C</output></div>
         <div class="keys" id="keys"></div>
         <label class="sl" for="ambVol"><span>Volumen del pad</span><output id="ambVolOut">60</output></label>
@@ -265,7 +266,8 @@ body.stage .pad.empty { visibility: hidden; }
         <label class="check"><input type="checkbox" id="ambAuto" checked> Encender solo con los loops worship</label>
         <div class="amb-src settings"><span id="ambSrc">Sintetizado</span>
           <div class="row-btns"><button class="btn small" id="ambLoad">Cargar audio por tono</button><button class="btn small" id="ambClear" hidden>Quitar audio de este tono</button></div>
-          <p class="note">Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido.</p>
+          <div class="row-btns"><button class="btn small" id="ambRename">Renombrar carpeta</button><button class="btn small" id="ambDel" hidden>Borrar carpeta</button></div>
+          <p class="note">Cada carpeta es un sonido (por ejemplo "Pad cálido" o "Shimmer") con sus 12 tonos. Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido. Los tonos sin audio suenan con el pad sintetizado.</p>
           <div class="msg" id="ambMsg"></div></div>
       </div>
     </div>
@@ -421,7 +423,8 @@ const clone = o => JSON.parse(JSON.stringify(o));
 let pads = BUILTIN.map(p => p && clone(p));
 const emptyPads = () => Array(16).fill(null);
 const folders = [{ name: 'Ritmos', pads }];
-const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi', folder:0 };
+const ambBanks = [{ name: 'Pad 1', wav: {} }];   // carpetas del pad ambiental, cada una con sus tonos
+const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, quality:'hi', folder:0, ambBank:0 };
 const LS = 'lanzador.v2';
 try {
   const s = JSON.parse(localStorage.getItem(LS) || '{}');
@@ -429,12 +432,14 @@ try {
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
   if (Array.isArray(s.folders)) s.folders.forEach((n, f) => { if (f === 0) folders[0].name = n; else folders[f] = { name: n, pads: emptyPads() }; });
   if (folders[s.folder]) st.folder = s.folder;
+  if (Array.isArray(s.ambBanks)) s.ambBanks.forEach((n, b) => { if (b === 0) ambBanks[0].name = n; else ambBanks[b] = { name: n, wav: {} }; });
+  if (ambBanks[s.ambBank]) st.ambBank = s.ambBank;
 } catch (e) {}
 function save(){
   try {
     const edits = {};
     folders[0].pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name) }));
+    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => b.name) }));
   } catch (e) {}
 }
 
@@ -515,7 +520,8 @@ function hit(name, t, v, long){
 
 // Pad ambiental: drone en el tono (raíz, quinta, octava, novena) con filtro que respira.
 let amb = null, ambOn = false, ambAutoOn = false;
-const ambWav = {};   // tono (0-11) -> { buffer, file }: drones propios exportados desde Ableton
+let ambWav = ambBanks[st.ambBank].wav;   // carpeta elegida: tono (0-11) -> { buffer, file }, drones propios exportados desde Ableton
+const ak = (b, k) => b ? `amb:${b}-${k}` : 'amb:' + k;   // clave en IndexedDB
 function ambStart(){
   const t = ctx.currentTime, root = 48 + st.key, w = ambWav[st.key];
   if (w) {   // WAV propio: en loop, sin seguir el BPM y con entrada suave
@@ -707,12 +713,15 @@ function renderBeats(){
   $('beats').innerHTML = Array.from({ length: n }, (_, i) => `<span class="beat${i === 0 ? ' one' : ''}"></span>`).join('');
 }
 function renderAmb(){
+  $('ambFolders').innerHTML = ambBanks.map((B, b) => `<button class="fchip${b === st.ambBank ? ' on' : ''}" data-b="${b}" aria-pressed="${b === st.ambBank}">${esc(B.name)}<small style="opacity:.7">${Object.keys(B.wav).length ? ' · ' + Object.keys(B.wav).length : ''}</small></button>`).join('')
+    + '<button class="fchip add" data-b="new" aria-label="Nueva carpeta de pad">+ Carpeta</button>';
+  $('ambDel').hidden = st.ambBank === 0;
   $('ambBtn').textContent = ambOn ? 'Encendido' : 'Apagado';
   $('ambBtn').classList.toggle('lit', ambOn);
   $('keys').innerHTML = KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}">${k}</button>`).join('');
   $('keyOut').textContent = KEY_NAMES[st.key];
   const n = Object.keys(ambWav).length, w = ambWav[st.key];
-  $('ambSrc').textContent = w ? `Tu audio: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · tienes audio en ${n} tonos` : 'Sintetizado';
+  $('ambSrc').textContent = w ? `Tu audio: ${w.file}` : n ? `Sintetizado en ${KEY_NAMES[st.key]} · esta carpeta tiene ${n === 1 ? '1 tono' : `${n} tonos`}` : 'Sintetizado (esta carpeta no tiene audios)';
   $('ambClear').hidden = !w;
 }
 let phCells = [];
@@ -839,11 +848,11 @@ async function loadAmbFiles(files){
       const bytes = await f.arrayBuffer(), buffer = await decode(bytes);
       const k = keyFromName(f.name) ?? st.key;
       ambWav[k] = { buffer, ...trimRegion(buffer, f.name), file: f.name, bytes };
-      await idb.put('amb:' + k, { file: f.name, bytes });
+      await idb.put(ak(st.ambBank, k), { file: f.name, bytes });
       done.push(KEY_NAMES[k]);
     } catch (e) { ambMsg(`No pude leer ${f.name}.`, true); }
   }
-  if (done.length) { ambMsg(`Cargado en: ${done.join(', ')}.`); note('addMsg', `Drones cargados en: ${done.join(', ')}.`); }
+  if (done.length) { ambMsg(`Cargado en ${ambBanks[st.ambBank].name}: ${done.join(', ')}.`); note('addMsg', `Drones cargados en ${ambBanks[st.ambBank].name}: ${done.join(', ')}.`); }
   if (ambOn) { ambStop(); ambStart(); }
   renderAmb();
 }
@@ -857,7 +866,7 @@ async function restoreSaved(){
         if (!folders[f]) continue;
         folders[f].pads[i] = { wav:true, name: v.name, bpm: v.bpm, follow: v.follow !== false, buffer, ...trimRegion(buffer, v.file), bytes: v.bytes, file: v.file }; }
       if (kind === 'kit') kit[id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
-      if (kind === 'amb') ambWav[+id] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes };
+      if (kind === 'amb') { const [b, k] = id.includes('-') ? id.split('-').map(Number) : [0, +id]; if (!ambBanks[b]) continue; ambBanks[b].wav[k] = { buffer, ...trimRegion(buffer, v.file), file: v.file, bytes: v.bytes }; }
     } catch (e) {}
   }
   renderPads(); renderEdit(); renderKit(); renderAmb();
@@ -892,7 +901,7 @@ $('ambBtn').onclick = () => setAmb(!ambOn);
 $('keys').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.key = +b.dataset.k; save(); if (ambOn) { ambStop(); ambStart(); } renderAmb(); };
 $('ambLoad').onclick = () => $('ambFile').click();
 $('ambFile').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; loadAmbFiles(fs); };
-$('ambClear').onclick = async () => { delete ambWav[st.key]; await idb.del('amb:' + st.key); if (ambOn) { ambStop(); ambStart(); } ambMsg(''); renderAmb(); };
+$('ambClear').onclick = async () => { delete ambWav[st.key]; await idb.del(ak(st.ambBank, st.key)); if (ambOn) { ambStop(); ambStart(); } ambMsg(''); renderAmb(); };
 $('ambVol').oninput = e => { st.ambVol = +e.target.value; $('ambVolOut').textContent = st.ambVol; applyLevels(); save(); };
 $('ambAuto').onchange = e => { st.ambAuto = e.target.checked; save(); };
 $('padFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (loadTarget) onFile(f, loadTarget); };
@@ -1084,7 +1093,12 @@ function buildSet(){
   });
   set.pads = set.folders[0].pads;   // para versiones anteriores de la app
   for (const [k, v] of Object.entries(kit)) if (v.bytes) { const a = `audio/kit-${k}.${extOf(v.file)}`; set.kit[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
-  for (const [k, v] of Object.entries(ambWav)) if (v.bytes) { const a = `audio/drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; set.amb[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
+  set.ambFolders = ambBanks.map((B, b) => {
+    const am = {};
+    for (const [k, v] of Object.entries(B.wav)) if (v.bytes) { const a = `audio/${b ? `pad-amb-${b + 1}-` : ''}drone-${KEY_NAMES[k].replace('#', 's')}.${extOf(v.file)}`; am[k] = { file: v.file, audio: a }; files.push({ name: a, data: new Uint8Array(v.bytes.slice(0)) }); }
+    return { name: B.name, amb: am };
+  });
+  set.amb = set.ambFolders[0].amb;   // para versiones anteriores de la app
   files.unshift({ name: 'set.json', data: enc.encode(JSON.stringify(set, null, 1)) });
   // Extensión propia: así el celular no lo descomprime solo y WhatsApp lo manda tal cual.
   return { name: `Set Lanzador ${new Date().toISOString().slice(0, 10)}.lanzador`, blob: new Blob([makeZip(files)], { type: 'application/octet-stream' }), files };
@@ -1129,22 +1143,23 @@ async function openSet(list){
     if (!set || set.app !== 'lanzador-de-loops') throw new Error('set');
     const audio = path => z[prefix + path] || z[path] || z[Object.keys(z).find(n => base(n) === base(path))];
     const fl = set.folders || [{ name: 'Ritmos', pads: set.pads || {} }];
-    const all = [...fl.flatMap(F => Object.values(F.pads || {})), ...Object.values(set.kit || {}), ...Object.values(set.amb || {})];
+    const af = set.ambFolders || [{ name: 'Pad 1', amb: set.amb || {} }];
+    const all = [...fl.flatMap(F => Object.values(F.pads || {})), ...Object.values(set.kit || {}), ...af.flatMap(A => Object.values(A.amb || {}))];
     const missing = all.filter(m => !audio(m.audio)).length;
-    pendingSet = { set, fl, audio };
-    $('setConfirmTxt').textContent = `Este set trae ${fl.length} ${fl.length === 1 ? 'carpeta' : 'carpetas'} y ${all.length - missing} ${all.length - missing === 1 ? 'audio' : 'audios'}. Va a reemplazar tus carpetas, pads, sonidos y drones de este equipo.`
+    pendingSet = { set, fl, af, audio };
+    $('setConfirmTxt').textContent = `Este set trae ${fl.length} ${fl.length === 1 ? 'carpeta' : 'carpetas'} de loops, ${af.length} de pads y ${all.length - missing} ${all.length - missing === 1 ? 'audio' : 'audios'}. Va a reemplazar tus carpetas, pads, sonidos y drones de este equipo.`
       + (missing ? ` ${missing === 1 ? 'Falta 1 audio' : `Faltan ${missing} audios`}: si quieres todo, elige el archivo .lanzador completo.` : '');
     $('setConfirm').hidden = false; setMsg('');
   } catch (e) { setMsg('Ese archivo no es un set del Lanzador. Elige el archivo .lanzador (o .zip) que guardaste.', true); }
 }
 async function applySet(){
-  const { set, fl, audio } = pendingSet; pendingSet = null; $('setConfirm').hidden = true;
+  const { set, fl, af, audio } = pendingSet; pendingSet = null; $('setConfirm').hidden = true;
   if (playing) stop();
   setMsg('Cargando set…');
   const ab = u => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength);
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
-  for (const k of Object.keys(ambWav)) delete ambWav[k];
+  ambBanks.length = 1; ambBanks[0].wav = {}; st.ambBank = 0;
   folders.length = 1; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
   for (const [i, tr] of Object.entries(set.edits || {})) if (pads[i]) pads[i].tracks = tr;
@@ -1161,10 +1176,14 @@ async function applySet(){
     try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
       kit[k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('kit:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
   }
-  for (const [k, m] of Object.entries(set.amb || {})) {
-    try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
-      ambWav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put('amb:' + k, { file: m.file, bytes }); } catch (e) { bad++; }
+  for (let b = 0; b < af.length; b++) {
+    if (b) ambBanks[b] = { name: af[b].name || `Pad ${b + 1}`, wav: {} }; else ambBanks[0].name = af[0].name || 'Pad 1';
+    for (const [k, m] of Object.entries(af[b].amb || {})) {
+      try { const bytes = ab(audio(m.audio)), buffer = await decode(bytes);
+        ambBanks[b].wav[+k] = { buffer, ...trimRegion(buffer, m.file), file: m.file, bytes }; await idb.put(ak(b, +k), { file: m.file, bytes }); } catch (e) { bad++; }
+    }
   }
+  ambWav = ambBanks[0].wav;
   Object.assign(st, set.ajustes || {});
   $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
   $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
@@ -1224,7 +1243,7 @@ $('resetYes').onclick = async () => {
   if (playing) stop();
   for (const [k] of await idb.all()) await idb.del(k);
   for (const k of Object.keys(kit)) delete kit[k];
-  for (const k of Object.keys(ambWav)) delete ambWav[k];
+  ambBanks.length = 1; ambBanks[0] = { name: 'Pad 1', wav: {} }; ambWav = ambBanks[0].wav; st.ambBank = 0;
   folders.length = 1; folders[0].name = 'Ritmos'; pads = folders[0].pads; st.folder = 0;
   BUILTIN.forEach((b, i) => { pads[i] = b ? clone(b) : null; });
   st.colors = {}; st.sel = 0; renderFolders(); renderFolderList();
@@ -1232,6 +1251,40 @@ $('resetYes').onclick = async () => {
   save(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
   note('resetMsg', 'Listo, la app volvió a los loops originales.');
 };
+
+// ---------- Carpetas del pad ambiental ----------
+function setAmbBank(b){
+  if (!ambBanks[b] || b === st.ambBank) return;
+  st.ambBank = b; ambWav = ambBanks[b].wav; save();
+  if (ambOn) { ambStop(); ambStart(); }   // cruza suave al nuevo sonido
+  ambMsg(''); renderAmb();
+}
+function newAmbBank(){
+  ambBanks.push({ name: `Pad ${ambBanks.length + 1}`, wav: {} });
+  setAmbBank(ambBanks.length - 1);
+  ambMsg(`Creé "${ambBanks[st.ambBank].name}". Carga sus tonos con "Cargar audio por tono".`);
+}
+async function deleteAmbBank(b){
+  if (!b || !ambBanks[b]) return;
+  const n = Object.keys(ambBanks[b].wav).length;
+  if (n && !confirm(`¿Borrar la carpeta "${ambBanks[b].name}" y ${n === 1 ? 'su tono' : `sus ${n} tonos`}?`)) return;
+  const name = ambBanks[b].name;
+  for (const [k, v] of await idb.all()) {
+    const m = k.match(/^amb:(\d+)-(\d+)$/); if (!m) continue;
+    if (+m[1] === b) await idb.del(k);
+    else if (+m[1] > b) { await idb.put(ak(+m[1] - 1, +m[2]), v); await idb.del(k); }
+  }
+  ambBanks.splice(b, 1);
+  const to = st.ambBank >= b ? st.ambBank - 1 : st.ambBank;
+  st.ambBank = -1; setAmbBank(Math.max(0, to));
+  ambMsg(`Borré la carpeta "${name}".`);
+}
+$('ambFolders').onclick = e => { const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
+$('ambRename').onclick = () => {
+  const n = prompt('Nombre de la carpeta', ambBanks[st.ambBank].name);
+  if (n && n.trim()) { ambBanks[st.ambBank].name = n.trim().slice(0, 20); save(); renderAmb(); }
+};
+$('ambDel').onclick = () => deleteAmbBank(st.ambBank);
 
 // ---------- Carpetas ----------
 function renderFolders(){
@@ -1325,7 +1378,7 @@ showAudioInfo();
 pads = folders[st.folder].pads;
 applyStage(); showSwing(); renderTransport(); renderFolders(); renderPads(); renderLcd(); renderBeats(); renderAmb(); renderEdit(); renderKit();
 requestAnimationFrame(frame);
-restoreSaved().then(() => { pads = folders[st.folder].pads; renderPads(); renderEdit(); openShared(); });
+restoreSaved().then(() => { pads = folders[st.folder].pads; ambWav = ambBanks[st.ambBank].wav; renderAmb(); renderPads(); renderEdit(); openShared(); });
 })();
 </script>
 <script>
