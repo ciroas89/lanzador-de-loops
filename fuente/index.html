@@ -97,9 +97,24 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 .pad.empty { background: transparent; border: 1px dashed var(--line); box-shadow: none; }
 .pad.empty .nm { color: var(--muted); font-size: clamp(.62rem, 10cqi, .95rem); }
 .pad.sel { outline: 2px solid var(--fg); outline-offset: 2px; }
-.pad.active { background: var(--c); border-color: var(--c); color: var(--on); box-shadow: 0 0 28px color-mix(in srgb, var(--c) 55%, transparent); }
+.pad .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.pad .led { width: 9px; height: 9px; border-radius: 50%; background: #0007; box-shadow: inset 0 0 0 1px #ffffff1a; flex: none; }
+.pad.active { background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--c) 70%, #fff) 0%, var(--c) 55%);
+  border-color: color-mix(in srgb, var(--c) 60%, #fff); color: var(--on);
+  box-shadow: 0 0 0 2px var(--c), 0 0 26px 4px color-mix(in srgb, var(--c) 85%, transparent), 0 0 70px 14px color-mix(in srgb, var(--c) 45%, transparent);
+  z-index: 1; }
+.pad.active .led { width: auto; height: auto; padding: 1px 6px; border-radius: 6px; background: var(--on); box-shadow: none; color: #fff; font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; }
+.pad.active .led::before { content: "ON"; }
+.pad.active.hit { filter: brightness(1.18); box-shadow: 0 0 0 3px #fff8, 0 0 34px 8px var(--c), 0 0 90px 22px color-mix(in srgb, var(--c) 55%, transparent); }
+.padgrid.playing .pad:not(.active):not(.empty) { filter: saturate(.6) brightness(.78); }
+.volume { display: grid; grid-template-columns: auto 1fr 3ch; gap: 10px; align-items: center; background: #0003; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.volume output { font-variant-numeric: tabular-nums; text-align: right; color: var(--fg); font-weight: 600; }
+.vol-ico { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--pad); display: grid; place-items: center; padding: 0; }
+.vol-ico svg { width: 20px; height: 20px; }
+.vol-ico.muted { background: var(--danger); border-color: var(--danger); color: var(--on); }
 .pad.active .meta { color: #0009; }
-.pad.active .strip { background: var(--on); opacity: .4; }
+.pad.active .strip { background: var(--on); opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .pad.active.hit { filter: none; } }
 .pad.queued { animation: q .4s steps(2) infinite; }
 @keyframes q { 50% { background: color-mix(in srgb, var(--c) 45%, var(--pad)); } }
 @media (prefers-reduced-motion: reduce) { .pad.queued { animation: none; background: color-mix(in srgb, var(--c) 45%, var(--pad)); } }
@@ -143,7 +158,7 @@ body.stage .pad.empty { visibility: hidden; }
 @media (max-width: 860px) {
   .device { grid-template-columns: 1fr; padding: 14px; }
   .side { display: contents; }
-  .lcd { order: 1; } .transport { order: 2; } .padgrid { order: 3; } .knobs { order: 4; }
+  .lcd { order: 1; } .transport { order: 2; } .padgrid { order: 3; } .volume { order: 4; } .knobs { order: 5; }
   .lower { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
@@ -187,9 +202,13 @@ body.stage .pad.empty { visibility: hidden; }
         </div>
       </div>
 
+      <div class="volume">
+        <button class="vol-ico" id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24" fill="currentColor"><path id="muteIcon" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
+        <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volumen general">
+        <output id="volOut">80</output>
+      </div>
+
       <div class="knobs settings">
-        <label class="sl" for="vol"><span>Volumen</span><output id="volOut">80</output></label>
-        <input type="range" id="vol" min="0" max="100" value="80">
         <label class="sl" for="swing"><span>Swing</span><output id="swingOut">0%</output></label>
         <input type="range" id="swing" min="50" max="75" value="50">
         <label class="check"><input type="checkbox" id="quantize" checked> Cambiar de pad al terminar el ciclo</label>
@@ -391,8 +410,15 @@ function setAmb(on, auto = false){
   if (!on) ambStop();
   renderAmb();
 }
+let muted = false;
+let pulseBeat = -1;
+function pulse(beat){   // destello del pad encendido en cada tiempo
+  if (beat === pulseBeat) return; pulseBeat = beat;
+  const el = document.querySelector('.pad.active'); if (!el) return;
+  el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 110);
+}
 function applyLevels(){
-  master.gain.value = Math.pow(st.vol / 100, 1.5) * .9;
+  master.gain.value = muted ? 0 : Math.pow(st.vol / 100, 1.5) * .9;
   buses.amb.gain.value = Math.pow(st.ambVol / 100, 1.5);
 }
 
@@ -512,11 +538,12 @@ function renderPads(){
   g.innerHTML = pads.map((p, i) => {
     const cls = ['pad', p ? (p.wav ? 'wav' : p.fam) : 'empty', i === cur ? 'active' : '', i === pending ? 'queued' : '', i === st.sel ? 'sel' : ''].join(' ');
     return `<button class="${cls}" data-i="${i}" aria-label="Pad ${i + 1}: ${p ? esc(p.name) : 'vacío'}">
-      <span class="strip"></span>
+      <span class="top"><span class="strip"></span>${p ? '<span class="led"></span>' : ''}</span>
       <span class="nm">${p ? esc(p.name) : '+ Cargar WAV'}</span>
       <span class="meta"><span>${p ? padMeta(p) : 'Pad vacío'}</span><span class="kb">${PAD_KEYS[i]}</span></span></button>`;
   }).join('');
   g.appendChild(legend);
+  g.classList.toggle('playing', playing && cur !== null);
 }
 function renderLcd(){
   const p = cur !== null ? pads[cur] : null;
@@ -575,6 +602,7 @@ function frame(){
       const d = p.buffer.duration, pos = Math.max(0, wavPos(now));
       $('lcdBar').style.width = ((pos % d) / d * 100).toFixed(1) + '%';
       $('lcdPos').textContent = `Vuelta ${Math.floor(pos / d) + 1}`;
+      pulse(Math.floor(pos / (60 / p.bpm)));
     } else {
       let last = null;
       while (vq.length && vq[0].time <= now) last = vq.shift();
@@ -584,6 +612,7 @@ function frame(){
         $('lcdPos').textContent = `Compás ${last.bar * (len / p.div / bpb) + Math.floor(beat / bpb) + 1} · Tiempo ${beat % bpb + 1}`;
         document.querySelectorAll('.beat').forEach((b, j) => b.classList.toggle('lit', j === beat));
         setPlayhead(last.step);
+        pulse(last.bar * 1000 + beat);
       }
     }
   }
@@ -651,6 +680,11 @@ $('pads').addEventListener('pointerdown', e => { const b = e.target.closest('.pa
 $('pads').addEventListener('click', e => { const b = e.target.closest('.pad'); if (b && (!pads[+b.dataset.i] || e.detail === 0)) pressPad(+b.dataset.i); });
 // iOS solo desbloquea el audio al soltar el dedo.
 for (const ev of ['touchend', 'click']) document.addEventListener(ev, () => { if (ctx.state !== 'running') ctx.resume(); }, { passive: true });
+$('mute').onclick = () => {
+  muted = !muted; applyLevels();
+  $('mute').classList.toggle('muted', muted);
+  $('mute').setAttribute('aria-label', muted ? 'Activar sonido' : 'Silenciar');
+};
 $('vol').oninput = e => { st.vol = +e.target.value; $('volOut').textContent = st.vol; applyLevels(); save(); };
 $('swing').oninput = e => { st.swing = +e.target.value; showSwing(); };
 $('quantize').onchange = e => { st.quantize = e.target.checked; save(); };
