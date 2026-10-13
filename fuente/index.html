@@ -30,20 +30,14 @@
 * { box-sizing: border-box; }
 html, body { background: var(--bg); color: var(--fg); }
 body { font-family: var(--sans); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 48px; display: grid; gap: 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 12px 48px; display: grid; gap: 12px; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-header.top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-header.top h1 { font-family: var(--display); font-weight: 800; font-stretch: 125%; font-size: 1.6rem; letter-spacing: -.01em; text-transform: uppercase; margin: 0; line-height: 1; }
-header.top h1 span { color: var(--orange); }
 .hint { color: var(--muted); font-size: .8rem; }
 kbd { font-family: var(--sans); font-size: .72rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--fg); }
 
-/* Chasis */
-.device { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 22px; background: var(--body); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: 0 24px 60px #000a; }
-.side { display: grid; gap: 14px; align-content: start; min-width: 0; }
 
 .lcd { background: var(--lcd-bg); border: 1px solid #000; border-radius: 8px; padding: 12px 14px; font-family: var(--mono); color: var(--lcd); box-shadow: inset 0 2px 10px #000c; display: grid; gap: 4px; }
 .lcd .row { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; opacity: .85; }
@@ -52,15 +46,10 @@ kbd { font-family: var(--sans); font-size: .72rem; border: 1px solid var(--line)
 .lcd .bar { height: 4px; background: #ffffff14; border-radius: 2px; overflow: hidden; }
 .lcd .bar i { display: block; height: 100%; width: 0; background: var(--lcd); }
 
-.transport { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; }
 .play { width: 74px; height: 74px; border-radius: 50%; border: 0; background: var(--fg); color: var(--on); display: grid; place-items: center; box-shadow: 0 6px 18px #0008; }
 .play:active { transform: translateY(2px); box-shadow: 0 2px 0 #0007; }
 .play svg { width: 30px; height: 30px; }
 .play.on { background: var(--orange); color: var(--on); }
-.tempo { display: grid; gap: 6px; min-width: 0; }
-.bpm-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.bpm-val { font-family: var(--display); font-weight: 800; font-stretch: 100%; letter-spacing: -.03em; font-size: 3.4rem; line-height: .9; font-variant-numeric: tabular-nums; min-width: 2.6ch; }
-.bpm-unit { font-family: var(--display); font-weight: 600; font-size: .95rem; color: var(--muted); letter-spacing: .1em; }
 .btn { background: var(--pad); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-weight: 600; min-height: 36px; }
 .btn:hover { border-color: var(--muted); }
 .btn:active { transform: translateY(1px); box-shadow: none; }
@@ -77,30 +66,12 @@ input[type=range] { width: 100%; accent-color: var(--orange); }
 .knobs output { color: var(--fg); font-variant-numeric: tabular-nums; text-transform: none; }
 .check { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .check input { accent-color: var(--orange); width: 16px; height: 16px; flex: none; }
-.alist { display: grid; gap: 6px; }
-.arow { border: 1px solid var(--line); border-radius: 10px; background: var(--pad); }
-.arow.open { border-color: var(--yellow); background: #0003; }
-.ahead { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; border: 0; padding: 9px 10px; font-weight: 700; font-size: .92rem; text-align: left; color: var(--fg); min-height: 40px; }
-.ahead .chev { width: 1em; color: var(--muted); }
-.arow.open .ahead .an { color: var(--yellow); }
-.arow.live .ahead .chev { color: var(--orange); }
-.ahead .ainfo { margin-left: auto; color: var(--muted); font-size: .74rem; font-weight: 500; }
-.arow .keys { padding: 0 10px 10px; }
-.arow .aslot { padding: 0 10px 10px; }
-.arow .avol { display: grid; grid-template-columns: auto 1fr 3ch; gap: 8px; align-items: center; padding: 0 10px 10px; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.arow .avol output { color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; text-transform: none; }
-.pvol { display: grid; grid-template-columns: minmax(0, 1fr) 3ch; gap: 10px; align-items: center; }
-.pvol output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; }
-.alist .fchip.add { justify-self: start; }
 .keys { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .keys button { background: var(--pad); border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; font-size: .8rem; font-weight: 600; }
 .keys button.has { box-shadow: inset 0 -3px 0 var(--orange); }
 .amb-src { display: grid; gap: 6px; font-size: .82rem; }
 .amb-src .note { margin: 0; color: var(--muted); font-size: .76rem; }
 .keys button.sel { background: var(--yellow); color: var(--on); border-color: var(--yellow); }
-.amb-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.amb-head .t { font-family: var(--display); font-weight: 800; font-size: 1.2rem; text-transform: uppercase; letter-spacing: .04em; }
-#ambBtn.lit { background: var(--worship); border-color: var(--worship); color: var(--on); }
 
 /* Pads */
 .padcol { display: grid; gap: 12px; align-content: start; min-width: 0; }
@@ -135,8 +106,6 @@ body.stage .fchip.add { display: none; }
 .pad.active .led::before { content: "ON"; }
 .pad.active.hit { filter: brightness(1.18); box-shadow: 0 0 0 3px #fff8, 0 0 34px 8px var(--c), 0 0 90px 22px color-mix(in srgb, var(--c) 55%, transparent); }
 .padgrid.playing .pad:not(.active):not(.empty) { filter: saturate(.6) brightness(.78); }
-.volume { display: grid; grid-template-columns: auto 1fr 3ch; gap: 10px; align-items: center; background: #0003; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
-.volume output { font-variant-numeric: tabular-nums; text-align: right; color: var(--fg); font-weight: 600; }
 .vol-ico { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--pad); display: grid; place-items: center; padding: 0; }
 .vol-ico svg { width: 20px; height: 20px; }
 .vol-ico.muted { background: var(--danger); border-color: var(--danger); color: var(--on); }
@@ -179,9 +148,6 @@ td.ph .cell { border-color: var(--fg); }
 .kitbox summary { cursor: pointer; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 .kitbox[open] summary { margin-bottom: 4px; }
 body.stage .lower, body.stage .settings, body.stage .hint { display: none; }
-.top-btns { display: flex; gap: 8px; }
-#optsBtn { display: inline-flex; align-items: center; gap: 6px; }
-#optsBtn svg { width: 16px; height: 16px; }
 dialog.opts { background: var(--body); color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 0; width: min(620px, calc(100% - 24px)); max-height: calc(100dvh - 32px); box-shadow: 0 30px 80px #000c; }
 dialog.opts::backdrop { background: #000a; }
 .opts-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; background: var(--body); border-bottom: 1px solid var(--line); }
@@ -196,87 +162,187 @@ dialog.opts::backdrop { background: #000a; }
 .danger-btn { border-color: var(--danger); color: var(--danger); }
 @media (max-width: 560px) { dialog.opts { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; border-radius: 0; margin: 0; } }
 body.stage .pad.empty { visibility: hidden; }
-#stageBtn.lit { background: var(--orange); border-color: var(--orange); color: var(--on); }
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .sw { width: 30px; height: 30px; border-radius: 8px; border: 2px solid transparent; background: var(--s); padding: 0; }
 .sw.on { border-color: var(--fg); box-shadow: 0 0 0 2px var(--bg) inset; }
 .msg { font-size: .82rem; color: var(--wav); min-height: 1.2em; }
 .msg.err { color: var(--danger); }
 
-@media (max-width: 860px) {
-  .device { grid-template-columns: 1fr; padding: 14px; }
-  .side { display: contents; }
-  .lcd { order: 1; } .transport { order: 2; } .padcol { order: 3; } .volume { order: 4; } .knobs { order: 5; }
+
+/* ===== Estilo consola en vivo (barra de transporte, pads ambientales con perillas, pads de loops con borde de neón) ===== */
+.tlabel { font-size: .62rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+.topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--body); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; box-shadow: 0 10px 30px #0008; }
+.brand { font-family: var(--display); font-weight: 800; font-stretch: 125%; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .02em; }
+.brand span { color: var(--orange); }
+.pill { background: transparent; border: 1.5px solid var(--line); border-radius: 8px; padding: 5px 12px; font-weight: 800; font-size: .74rem; text-transform: uppercase; letter-spacing: .12em; min-height: 34px; color: var(--fg); }
+.pill.lit, #stageBtn.lit { background: var(--orange); border-color: var(--orange); color: var(--on); box-shadow: 0 0 14px color-mix(in srgb, var(--orange) 60%, transparent); }
+#ambBtn.lit { background: var(--yellow); border-color: var(--yellow); color: var(--on); box-shadow: 0 0 14px color-mix(in srgb, var(--yellow) 55%, transparent); }
+.tgroup { display: flex; align-items: center; gap: 8px; padding-inline: 8px; border-inline: 1px solid var(--line); }
+.tbtn { background: var(--pad); border: 1px solid var(--line); border-radius: 8px; min-height: 34px; padding: 4px 12px; font-weight: 800; font-size: .78rem; letter-spacing: .08em; display: inline-flex; align-items: center; gap: 6px; }
+.tbtn.sq { width: 34px; padding: 0; justify-content: center; font-size: 1rem; }
+.tbtn:active, .pill:active { transform: translateY(1px); }
+.gear svg { width: 16px; height: 16px; }
+.play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--fg); color: var(--on); display: grid; place-items: center; flex: none; }
+.play svg { width: 18px; height: 18px; }
+.play.on { background: var(--orange); box-shadow: 0 0 16px color-mix(in srgb, var(--orange) 70%, transparent); }
+.bpmbox { display: flex; align-items: center; gap: 4px; }
+.bpm-read { display: grid; justify-items: center; min-width: 4ch; line-height: 1; }
+.bpm-read b { font-family: var(--display); font-weight: 800; font-size: 1.45rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.bpm-read small { font-size: .55rem; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+.beats { display: flex; gap: 5px; }
+.beat { width: 9px; height: 9px; }
+.bpm-slider { flex: 1 1 120px; max-width: 220px; min-width: 90px; }
+.master { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 200px; }
+.master input { width: 120px; }
+.master output { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 3ch; text-align: right; font-size: .85rem; }
+.vol-ico { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--pad); display: grid; place-items: center; padding: 0; flex: none; }
+.vol-ico svg { width: 18px; height: 18px; }
+
+.deck { background: var(--body); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px 14px; display: grid; gap: 12px; min-width: 0; }
+.deck-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.deck-head .folders { flex: 1; min-width: 0; }
+.deck-t { margin: 0; font-family: var(--display); font-weight: 800; font-stretch: 125%; font-size: .92rem; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.akeys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.akey { position: relative; min-height: 54px; border-radius: 10px; border: 1px solid var(--line); background: linear-gradient(#2b2e35, #212328); font-family: var(--display); font-weight: 800; font-size: 1.15rem; box-shadow: inset 0 1px 0 #ffffff12, 0 2px 0 #0008; }
+.akey.has::after { content: ""; position: absolute; left: 50%; bottom: 7px; width: 18px; height: 3px; margin-left: -9px; border-radius: 2px; background: var(--orange); }
+.akey.sel { border-color: var(--yellow); color: var(--yellow); }
+.akey.sel.live { background: var(--yellow); color: var(--on); box-shadow: 0 0 0 1px var(--yellow), 0 0 24px 2px color-mix(in srgb, var(--yellow) 60%, transparent); }
+.akey:active { transform: translateY(1px); }
+.knobrow { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.knob { display: grid; justify-items: center; gap: 2px; width: 64px; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ns-resize; }
+.knob svg { width: 46px; height: 46px; }
+.knob .kt { font-size: .6rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 800; }
+.knob .kv { font-size: .72rem; font-variant-numeric: tabular-nums; font-weight: 700; }
+.knob:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 8px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle span { border: 1.5px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.toggle input:checked + span { border-color: var(--worship); color: var(--worship); box-shadow: 0 0 10px color-mix(in srgb, var(--worship) 45%, transparent); }
+.toggle input:focus-visible + span { outline: 2px solid var(--fg); outline-offset: 2px; }
+.amb-more { margin-left: auto; font-size: .82rem; }
+.amb-more summary { cursor: pointer; color: var(--muted); font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; }
+.amb-more[open] { flex-basis: 100%; margin-left: 0; }
+.amb-more[open] summary { margin-bottom: 8px; }
+
+.loops-body { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: start; }
+.loops-side { display: grid; gap: 12px; justify-items: stretch; }
+.loops-side .knob { justify-self: center; }
+.lcd { padding: 10px 11px; }
+.lcd .big { font-size: 1.05rem; }
+.lcd .row { font-size: .7rem; }
+.lcd .next { font-size: .72rem; }
+.selpad { display: grid; gap: 2px; text-align: center; }
+.selpad b { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.padgrid { gap: 10px; }
+.pad { background: #131417; border: 2px solid color-mix(in srgb, var(--c) 85%, transparent); border-radius: 12px; padding: 9px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 35%, transparent), inset 0 0 14px color-mix(in srgb, var(--c) 12%, transparent); justify-content: space-between; }
+.pad .nm { font-size: clamp(.58rem, 9cqi, .95rem); letter-spacing: .02em; }
+.pad .strip { display: none; }
+.pad .led { background: color-mix(in srgb, var(--c) 30%, #000); box-shadow: 0 0 6px color-mix(in srgb, var(--c) 50%, transparent); }
+.pad.empty { border: 1.5px dashed var(--line); box-shadow: none; }
+.pad.active { border-color: var(--c); }
+@media (min-width: 901px) { .pad { aspect-ratio: 4 / 3; } }
+.hint { text-align: center; }
+
+@media (max-width: 900px) {
+  .bpm-slider { display: none; }
+  .master { min-width: 0; }
+  .master input { width: 90px; }
+  .loops-body { grid-template-columns: 1fr; }
+  .loops-side { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .loops-side .selpad { display: none; }
   .lower { grid-template-columns: 1fr; }
 }
-@media (max-width: 480px) {
-  .hint { display: none; }
-  .padgrid { gap: 8px; }
-  .pad { padding: 7px; border-radius: 10px; }
+@media (max-width: 600px) {
+  .topbar { gap: 8px; }
+  .brand, .gear span, .master .tlabel, .beats { display: none; }
+  #stageBtn { order: 1; }
+  .master { order: 2; flex: 1; margin-left: 0; min-width: 0; }
+  .master input { flex: 1; width: auto; min-width: 0; }
+  .gear { order: 3; }
+  .tgroup { padding-inline: 0; border: 0; order: 4; flex-basis: 100%; justify-content: space-between; }
+  .deck { padding: 10px; }
+  .deck-head { flex-wrap: wrap; gap: 8px; }
+  .deck-head .folders { order: 3; flex-basis: 100%; }
+  .deck-head .pill { margin-left: auto; }
+  .akeys { gap: 6px; }
+  .akey { min-height: 46px; font-size: 1rem; }
+  .knobrow { gap: 10px; }
+  .knob { width: 58px; }
+  .padgrid { gap: 7px; }
+  .pad { padding: 6px; border-radius: 10px; }
   .pad .meta .kb, .pad .meta .mt { display: none; }
   .fields { grid-template-columns: 1fr; }
+  .hint { display: none; }
 }
+body.stage .topbar .bpm-slider { display: none; }
 </style>
 
 <div class="wrap">
-  <header class="top">
-    <h1>Lanzador <span>de</span> Loops</h1>
-    <div class="top-btns"><button class="btn small" id="stageBtn">Modo escenario</button><button class="btn small" id="optsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>Opciones</button></div>
-    <div class="hint"><kbd>Espacio</kbd> tocar/parar · pads <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> <kbd>Q</kbd>…<kbd>V</kbd> · <kbd>↑</kbd><kbd>↓</kbd> BPM · <kbd>T</kbd> tap</div>
+  <header class="topbar" aria-label="Transporte">
+    <div class="brand">Lanzador<span>.</span></div>
+    <button class="pill" id="stageBtn" aria-pressed="false">En vivo</button>
+    <div class="tgroup">
+      <button class="play" id="play" aria-label="Tocar"><svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></button>
+      <button class="tbtn" id="tap">TAP</button>
+      <div class="bpmbox"><button class="tbtn sq" id="bpmDown" aria-label="Bajar BPM">−</button><div class="bpm-read"><b id="bpmVal">140</b><small>BPM</small></div><button class="tbtn sq" id="bpmUp" aria-label="Subir BPM">+</button></div>
+      <div class="beats" id="beats"></div>
+    </div>
+    <input type="range" id="bpm" min="40" max="240" value="140" aria-label="BPM" class="bpm-slider">
+    <div class="master"><span class="tlabel">Master</span>
+      <button class="vol-ico" id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24" fill="currentColor"><path id="muteIcon" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
+      <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volumen general"><output id="volOut">80</output></div>
+    <button class="tbtn gear" id="optsBtn" aria-haspopup="dialog" aria-label="Opciones"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg><span>Opciones</span></button>
   </header>
 
-  <section class="device" aria-label="Controlador">
-    <div class="side">
-      <div class="lcd" aria-live="polite">
-        <div class="row"><span id="lcdPad">PAD --</span><span id="lcdMeter">--</span></div>
-        <div class="big" id="lcdName">Listo</div>
-        <div class="row"><span id="lcdPos">Toca un pad</span><span id="lcdBpm">--- BPM</span></div>
-        <div class="bar"><i id="lcdBar"></i></div>
-        <div class="next" id="lcdNext"></div>
-      </div>
-
-      <div class="transport">
-        <button class="play" id="play" aria-label="Tocar"><svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></button>
-        <div class="tempo">
-          <div class="bpm-row">
-            <div class="bpm-val" id="bpmVal">140</div>
-            <div class="bpm-unit">BPM</div>
-            <button class="btn small" id="bpmDown" aria-label="Bajar BPM">−</button>
-            <button class="btn small" id="bpmUp" aria-label="Subir BPM">+</button>
-            <button class="btn small" id="tap">TAP</button>
-          </div>
-          <input type="range" id="bpm" min="40" max="240" value="140" aria-label="BPM">
-          <div class="beats" id="beats"></div>
-        </div>
-      </div>
-
-      <div class="volume">
-        <button class="vol-ico" id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24" fill="currentColor"><path id="muteIcon" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
-        <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volumen general">
-        <output id="volOut">80</output>
-      </div>
-
-
-      <div class="knobs">
-        <div class="amb-head"><span class="t">Pad ambiental</span><button class="btn small" id="ambBtn">Apagado</button></div>
-        <div class="alist" id="ambFolders" aria-label="Tipos de pad"></div>
-        <label class="sl" for="ambVol"><span>Volumen general de los pads</span><output id="ambVolOut">60</output></label>
-        <input type="range" id="ambVol" min="0" max="100" value="60">
-        <label class="check"><input type="checkbox" id="ambAuto" checked> Encender solo con los loops worship</label>
-        <div class="amb-src settings" id="ambBox"><span id="ambSrc">Sintetizado</span>
+  <section class="deck amb" aria-label="Pads ambientales">
+    <div class="deck-head">
+      <h2 class="deck-t">Pads ambientales</h2>
+      <div class="folders" id="ambFolders" aria-label="Tipos de pad"></div>
+      <button class="pill" id="ambBtn">Apagado</button>
+    </div>
+    <div class="akeys" id="ambKeys"></div>
+    <div class="knobrow">
+      <div class="knob" data-for="bankVol" data-label="Vol"></div>
+      <div class="knob" data-for="ambVol" data-label="General"></div>
+      <div class="knob" data-for="ambFade" data-label="Fundido" data-unit=" s"></div>
+      <label class="toggle"><input type="checkbox" id="ambAuto" checked><span>Auto worship</span></label>
+      <details class="amb-more settings"><summary>Audios de este pad</summary>
+        <div class="amb-src" id="ambBox"><span id="ambSrc">Sintetizado</span>
           <div class="row-btns"><button class="btn small" id="ambLoad">Cargar audio por tono</button><button class="btn small" id="ambClear" hidden>Quitar audio de este tono</button></div>
           <div class="row-btns"><button class="btn small" id="ambRename">Renombrar</button><button class="btn small" id="ambDel" hidden>Borrar este pad</button></div>
           <p class="note">Carga aquí tus audios de este pad, uno por tono. Acepta WAV y MP3, y puedes elegir varios a la vez. Uso el tono que diga el nombre del archivo, por ejemplo "Pad C#.wav" o "Drone Eb.wav". Si no lo encuentro, va al tono elegido. Los tonos sin audio suenan con un sonido sintetizado de este tipo.</p>
           <div class="msg" id="ambMsg"></div></div>
-      </div>
-    </div>
-
-    <div class="padcol">
-      <div class="folders" id="folders" aria-label="Carpetas de pads"></div>
-      <div class="padgrid" id="pads">
-      </div>
+      </details>
+      <input type="range" id="bankVol" min="0" max="100" value="100" hidden>
+      <input type="range" id="ambVol" min="0" max="100" value="60" hidden><output id="ambVolOut" hidden>60</output>
+      <input type="range" id="ambFade" min="0.5" max="8" step="0.5" value="2.5" hidden>
     </div>
   </section>
+
+  <section class="deck loops" aria-label="Loops">
+    <div class="deck-head">
+      <h2 class="deck-t">Loops</h2>
+      <div class="folders" id="folders" aria-label="Carpetas de pads"></div>
+      <button class="pill settings" id="loadLoops">Cargar audios</button>
+    </div>
+    <div class="loops-body">
+      <aside class="loops-side">
+        <div class="lcd" aria-live="polite">
+          <div class="row"><span id="lcdPad">PAD --</span><span id="lcdMeter">--</span></div>
+          <div class="big" id="lcdName">Listo</div>
+          <div class="row"><span id="lcdPos">Toca un pad</span><span id="lcdBpm">--- BPM</span></div>
+          <div class="bar"><i id="lcdBar"></i></div>
+          <div class="next" id="lcdNext"></div>
+        </div>
+        <div class="selpad"><span class="tlabel">Pad elegido</span><b id="selName">—</b></div>
+        <div class="knob" data-for="padVol" data-label="Vol pad"></div>
+        <input type="range" id="padVol" min="0" max="100" value="100" hidden>
+      </aside>
+      <div class="padgrid" id="pads"></div>
+    </div>
+  </section>
+  <div class="hint"><kbd>Espacio</kbd> tocar/parar · pads <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> <kbd>Q</kbd>…<kbd>V</kbd> · <kbd>↑</kbd><kbd>↓</kbd> BPM · <kbd>←</kbd><kbd>→</kbd> carpetas · <kbd>T</kbd> tap</div>
 
   <section class="lower">
     <div class="panel" id="editPanel" aria-live="polite"></div>
@@ -428,11 +494,11 @@ const ambBanks = AMB_DEFAULT.map(([name, synth]) => ({ name, synth, wav: {} }));
 function ambDefaults(){   // sets y versiones anteriores tenían una sola carpeta "Pad 1"
   if (ambBanks.length === 1 && /^pad 1$/i.test(ambBanks[0].name)) { ambBanks[0].name = AMB_DEFAULT[0][0]; ambBanks[0].synth = 'warm'; AMB_DEFAULT.slice(1).forEach(([name, synth]) => ambBanks.push({ name, synth, wav: {} })); }
 }
-const st = { bpm:140, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, vols:{}, quality:'hi', folder:0, ambBank:0 };
+const st = { bpm:140, ambFade:2.5, key:0, swing:50, quantize:true, lockBpm:false, vol:80, ambVol:60, ambAuto:true, sel:0, stage:false, colors:{}, vols:{}, quality:'hi', folder:0, ambBank:0 };
 const LS = 'lanzador.v2';
 try {
   const s = JSON.parse(localStorage.getItem(LS) || '{}');
-  for (const k of ['key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','vols','quality']) if (k in s) st[k] = s[k];
+  for (const k of ['ambFade','key','quantize','lockBpm','vol','ambVol','ambAuto','sel','stage','colors','vols','quality']) if (k in s) st[k] = s[k];
   if (s.edits) for (const [i, tr] of Object.entries(s.edits)) if (pads[i] && !pads[i].wav) pads[i].tracks = tr;
   if (Array.isArray(s.folders)) s.folders.forEach((n, f) => { if (f === 0) folders[0].name = n; else folders[f] = { name: n, pads: emptyPads() }; });
   if (folders[s.folder]) st.folder = s.folder;
@@ -447,7 +513,7 @@ function save(){
   try {
     const edits = {};
     folders[0].pads.forEach((p, i) => { if (p && !p.wav && BUILTIN[i] && JSON.stringify(p.tracks) !== JSON.stringify(BUILTIN[i].tracks)) edits[i] = p.tracks; });
-    localStorage.setItem(LS, JSON.stringify({ key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, vols:st.vols, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => ({ name: b.name, synth: b.synth, vol: b.vol ?? 100 })) }));
+    localStorage.setItem(LS, JSON.stringify({ ambFade:st.ambFade, key:st.key, quantize:st.quantize, lockBpm:st.lockBpm, vol:st.vol, ambVol:st.ambVol, ambAuto:st.ambAuto, sel:st.sel, stage:st.stage, colors:st.colors, vols:st.vols, quality:st.quality, edits, folder:st.folder, folders: folders.map(f => f.name), ambBank:st.ambBank, ambBanks: ambBanks.map(b => ({ name: b.name, synth: b.synth, vol: b.vol ?? 100 })) }));
   } catch (e) {}
 }
 
@@ -535,7 +601,7 @@ function ambStart(){
   const t = ctx.currentTime, root = 48 + st.key, w = ambWav[st.key];
   const lvl = ctx.createGain(); lvl.gain.value = lvlOf(ambBanks[st.ambBank].vol); lvl.connect(buses.amb);
   if (w) {   // WAV propio: en loop, sin seguir el BPM y con entrada suave
-    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.9, t + 2.5);
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.9, t + st.ambFade);
     const src = ctx.createBufferSource(); src.buffer = w.buffer; src.loop = true; src.loopStart = w.ls || 0; src.loopEnd = w.le ?? w.buffer.duration;
     src.connect(out); out.connect(lvl); src.start(t, w.ls || 0);
     amb = { out, lvl, bank: st.ambBank, oscs: [src] };
@@ -543,7 +609,7 @@ function ambStart(){
   }
   const kind = ambBanks[st.ambBank].synth || 'warm';
   if (kind === 'drone') {   // grave y quieto: fundamental, octava abajo y quinta, casi sin brillo
-    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.22, t + 3);
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.22, t + st.ambFade);
     const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .4; f.connect(out); out.connect(lvl);
     const oscs = [];
     for (const [semi, lvl, type] of [[-12, 1, 'sine'], [0, .8, 'triangle'], [7, .45, 'sine'], [12, .25, 'triangle']]) {
@@ -555,7 +621,7 @@ function ambStart(){
     amb = { out, lvl, bank: st.ambBank, oscs }; return;
   }
   if (kind === 'texture') {   // aire y brillo: octavas altas que titilan sobre ruido filtrado en el tono
-    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.14, t + 3); out.connect(lvl);
+    const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.14, t + st.ambFade); out.connect(lvl);
     const oscs = [];
     const nb = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
@@ -569,7 +635,7 @@ function ambStart(){
     });
     amb = { out, lvl, bank: st.ambBank, oscs }; return;
   }
-  const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.16, t + 2.5);
+  const out = ctx.createGain(); out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.16, t + st.ambFade);
   const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; f.Q.value = .6;
   const lfo = ctx.createOscillator(); lfo.frequency.value = .07; const lg = ctx.createGain(); lg.gain.value = 350;
   lfo.connect(lg); lg.connect(f.frequency); lfo.start(t);
@@ -586,8 +652,8 @@ function ambStart(){
 function ambStop(){
   if (!amb) return;
   const t = ctx.currentTime, a = amb; amb = null;
-  a.out.gain.cancelScheduledValues(t); a.out.gain.setValueAtTime(a.out.gain.value, t); a.out.gain.linearRampToValueAtTime(.0001, t + 3);
-  a.oscs.forEach(o => o.stop(t + 3.1));
+  a.out.gain.cancelScheduledValues(t); a.out.gain.setValueAtTime(a.out.gain.value, t); a.out.gain.linearRampToValueAtTime(.0001, t + st.ambFade);
+  a.oscs.forEach(o => o.stop(t + st.ambFade + .1));
 }
 function setAmb(on, auto = false){
   ambOn = on; ambAutoOn = on && auto;
@@ -753,19 +819,11 @@ function renderBeats(){
   const n = p && !p.wav ? lenOf(p) / p.div : 4;
   $('beats').innerHTML = Array.from({ length: n }, (_, i) => `<span class="beat${i === 0 ? ' one' : ''}"></span>`).join('');
 }
-const ambBox = document.getElementById('ambBox');
 function renderAmb(){
-  ambBox.remove();
-  $('ambFolders').innerHTML = ambBanks.map((B, b) => {
-    const open = b === st.ambBank, n = Object.keys(B.wav).length;
-    return `<div class="arow${open ? ' open' : ''}${open && ambOn ? ' live' : ''}">
-      <button class="ahead" data-b="${b}" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><span class="an">${esc(B.name)}</span>
-        <span class="ainfo">${open ? 'Tono ' + KEY_NAMES[st.key] : ''}${n ? `${open ? ' · ' : ''}${n} ${n === 1 ? 'audio' : 'audios'}` : ''}</span></button>
-      ${open ? `<div class="keys">${KEY_NAMES.map((k, i) => `<button class="${i === st.key ? 'sel' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}" aria-label="Tono ${k}">${k}</button>`).join('')}</div>
-      <label class="avol"><span>Volumen</span><input type="range" min="0" max="100" value="${B.vol ?? 100}" data-bvol="${b}" aria-label="Volumen de ${esc(B.name)}"><output>${B.vol ?? 100}</output></label><div class="aslot"></div>` : ''}
-    </div>`;
-  }).join('') + '<button class="fchip add" data-b="new">+ Agregar pad</button>';
-  $('ambFolders').querySelector('.aslot').appendChild(ambBox);
+  $('ambFolders').innerHTML = ambBanks.map((B, b) => `<button class="fchip${b === st.ambBank ? ' on' : ''}" data-b="${b}" aria-pressed="${b === st.ambBank}">${esc(B.name)}${Object.keys(B.wav).length ? `<small style="opacity:.7"> · ${Object.keys(B.wav).length}</small>` : ''}</button>`).join('')
+    + '<button class="fchip add" data-b="new" aria-label="Agregar pad">+</button>';
+  $('ambKeys').innerHTML = KEY_NAMES.map((k, i) => `<button class="akey${i === st.key ? ' sel' : ''}${i === st.key && ambOn ? ' live' : ''}${ambWav[i] ? ' has' : ''}" data-k="${i}" aria-pressed="${i === st.key && ambOn}" aria-label="Tono ${k}">${k}</button>`).join('');
+  $('bankVol').value = ambBanks[st.ambBank].vol ?? 100;
   $('ambDel').hidden = st.ambBank === 0;
   $('ambBtn').textContent = ambOn ? 'Encendido' : 'Apagado';
   $('ambBtn').classList.toggle('lit', ambOn);
@@ -776,10 +834,6 @@ function renderAmb(){
 let phCells = [];
 const SWATCHES = [['Naranja','#ff6a1f'],['Ámbar','#ff9b3d'],['Amarillo','#ffc61a'],['Lima','#b6e14a'],['Verde','#3fd18a'],['Turquesa','#2fc6c6'],
   ['Azul','#4c8dff'],['Violeta','#9b6bff'],['Rosa','#ff5fa2'],['Rojo','#ff4d3d'],['Gris','#c3c8cf'],['Blanco','#f2f2f0']];
-function volPicker(i){
-  const v = st.vols[ck(i)] ?? 100;
-  return `<label class="field">Volumen de este pad<span class="pvol"><input type="range" id="pVol" min="0" max="100" value="${v}" aria-label="Volumen de este pad"><output id="pVolOut">${v}</output></span></label>`;
-}
 function colorPicker(i){
   const cur = st.colors[ck(i)];
   return `<div class="field">Color del pad<div class="swatches">${SWATCHES.map(([n, c]) =>
@@ -788,6 +842,7 @@ function colorPicker(i){
 }
 function renderEdit(){
   const i = st.sel, p = pads[i], el = $('editPanel');
+  $('padVol').value = st.vols[ck(i)] ?? 100; $('selName').textContent = p ? p.name : `Pad ${i + 1} vacío`;
   const head = `<h2>Pad ${i + 1} · tecla ${PAD_KEYS[i]}</h2>`;
   if (!p) {
     el.innerHTML = head + `<h3>Pad vacío</h3><p>Carga un loop en WAV o MP3 para lanzarlo desde este pad. Calculo su BPM por la duración y luego puedes corregirlo.</p>
@@ -798,14 +853,14 @@ function renderEdit(){
     el.innerHTML = head + `<h3>${esc(p.name)}</h3>
       <div class="fields"><label class="field">Nombre<input id="wName" value="${esc(p.name)}" maxlength="24"></label>
       <label class="field">BPM original<input id="wBpm" type="number" min="40" max="240" value="${p.bpm}"></label></div>
-      ${colorPicker(i)}${volPicker(i)}
+      ${colorPicker(i)}
       <label class="check"><input type="checkbox" id="wFollow"${p.follow === false ? '' : ' checked'}> Seguir el BPM (apágalo para drones y texturas)</label>
       <p>Archivo: ${esc(p.file)} · ${p.buffer.duration.toFixed(2)} s. ${p.follow === false ? 'Suena siempre a su velocidad y tono originales.' : 'Al subir o bajar el BPM, este audio también sube o baja de tono.'}</p>
       <div class="row-btns"><button class="btn" data-act="load">Reemplazar audio</button><button class="btn" data-act="unload">${BUILTIN[i] && !st.folder ? 'Volver al loop original' : 'Vaciar pad'}</button></div><div class="msg" id="msg"></div>`;
     return;
   }
   el.innerHTML = head + `<h3>${esc(p.name)}</h3>
-    ${colorPicker(i)}${volPicker(i)}
+    ${colorPicker(i)}
     <p>Loop incluido · ${p.bpm} BPM · ${esc(p.meter)}. Suena con: ${Object.keys(p.tracks).map(k => LABELS[k] + (kit[k] ? ' (tu audio)' : '')).join(', ')}.</p>
     <div class="row-btns"><button class="btn" data-act="load">Reemplazar por un audio</button></div><div class="msg" id="msg"></div>`;
 }
@@ -819,6 +874,7 @@ function setPlayhead(s){
   if (s >= 0 && isCur(st.sel) && $('grid')) { phCells = [...$('grid').querySelectorAll(`td[data-s="${s}"]`)]; phCells.forEach(td => td.classList.add('ph')); }
 }
 function frame(){
+  drawKnobs();
   if (playing && cur !== null) {
     const p = CP(), now = ctx.currentTime;
     if (p.wav) {
@@ -951,7 +1007,11 @@ $('swing').oninput = e => { st.swing = +e.target.value; showSwing(); };
 $('quantize').onchange = e => { st.quantize = e.target.checked; save(); };
 $('lockBpm').onchange = e => { st.lockBpm = e.target.checked; save(); };
 $('ambBtn').onclick = () => setAmb(!ambOn);
-function pickKey(k){ st.key = k; save(); if (ambOn) { ambStop(); ambStart(); } renderAmb(); }
+function pickKey(k){   // tocar un tono lo enciende en ese tono; tocar el tono que suena lo apaga
+  if (ambOn && k === st.key) { setAmb(false); return; }
+  st.key = k; save();
+  if (ambOn) { ambStop(); ambStart(); renderAmb(); } else setAmb(true);
+}
 $('ambLoad').onclick = () => $('ambFile').click();
 $('ambFile').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; loadAmbFiles(fs); };
 $('ambClear').onclick = async () => { delete ambWav[st.key]; await idb.del(ak(st.ambBank, st.key)); if (ambOn) { ambStop(); ambStart(); } ambMsg(''); renderAmb(); };
@@ -980,15 +1040,13 @@ $('editPanel').addEventListener('click', async e => {
     renderPads(); renderEdit();
   }
 });
-$('editPanel').addEventListener('input', e => {
-  if (e.target.id !== 'pVol') return;
+$('padVol').addEventListener('input', e => {
   const i = st.sel, v = +e.target.value;
   if (v === 100) delete st.vols[ck(i)]; else st.vols[ck(i)] = v;
-  $('pVolOut').textContent = v;
   if (isCur(i) && playing) { const g = lvlOf(v), t = ctx.currentTime; buses.perc.gain.setTargetAtTime(g, t, .03); buses.wav.gain.setTargetAtTime(g, t, .03); }
 });
+$('padVol').addEventListener('change', save);
 $('editPanel').addEventListener('change', async e => {
-  if (e.target.id === 'pVol') { save(); return; }
   const i = st.sel, p = pads[i]; if (!p || !p.wav) return;
   if (e.target.id === 'wName') p.name = e.target.value.trim().slice(0, 24) || p.name;
   if (e.target.id === 'wFollow') {
@@ -1132,7 +1190,7 @@ $('xAll').onclick = () => exportPads(pads.map((_, i) => i), false);
 function applyStage(){
   document.body.classList.toggle('stage', st.stage);
   $('stageBtn').classList.toggle('lit', st.stage);
-  $('stageBtn').textContent = st.stage ? 'Salir del modo escenario' : 'Modo escenario';
+  $('stageBtn').textContent = 'En vivo'; $('stageBtn').setAttribute('aria-pressed', st.stage); $('stageBtn').title = st.stage ? 'Salir del modo en vivo' : 'Modo en vivo: solo lo necesario para tocar';
 }
 $('stageBtn').onclick = () => { st.stage = !st.stage; applyStage(); save(); };
 
@@ -1142,7 +1200,7 @@ function setMsg(t, err){ $('setMsg').textContent = t; $('setMsg').classList.togg
 function buildSet(){
   const files = [], enc = new TextEncoder();
   const set = { app: 'lanzador-de-loops', version: 2, saved: new Date().toISOString(),
-    ajustes: { key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, vols: st.vols, quality: st.quality },
+    ajustes: { ambFade: st.ambFade, key: st.key, quantize: st.quantize, lockBpm: st.lockBpm, vol: st.vol, ambVol: st.ambVol, ambAuto: st.ambAuto, colors: st.colors, vols: st.vols, quality: st.quality },
     edits: {}, pads: {}, folders: [], kit: {}, amb: {} };
   folders.forEach((F, f) => {
     const fp = {};
@@ -1247,7 +1305,7 @@ async function applySet(){
   ambDefaults(); ambWav = ambBanks[0].wav;
   st.vols = {}; Object.assign(st, set.ajustes || {});
   $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto; $('xQuality').value = st.quality;
-  $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
+  $('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol; $('ambFade').value = st.ambFade;
   applyLevels(); if (ambOn) { ambStop(); ambStart(); }
   save(); renderFolders(); renderPads(); renderEdit(); renderKit(); renderAmb(); renderLcd();
   setMsg(bad ? `Set cargado, pero ${bad === 1 ? 'faltó 1 audio' : `faltaron ${bad} audios`}.` : 'Set cargado.', !!bad);
@@ -1270,6 +1328,7 @@ $('optsClose').onclick = () => $('opts').close();
 $('opts').addEventListener('click', e => { if (e.target === $('opts')) $('opts').close(); });
 $('optsTabs').onclick = e => { const b = e.target.closest('[data-go]'); if (b) showTab(b.dataset.go); };
 $('addLoops').onclick = () => $('addFile').click();
+$('loadLoops').onclick = () => $('addFile').click();
 $('addDrones').onclick = () => $('ambFile').click();
 $('addFile').onchange = async e => {
   const fs = [...e.target.files]; e.target.value = '';
@@ -1340,13 +1399,15 @@ async function deleteAmbBank(b){
   st.ambBank = -1; setAmbBank(Math.max(0, to));
   ambMsg(`Borré "${name}".`);
 }
-$('ambFolders').addEventListener('input', e => {
-  const b = e.target.dataset.bvol; if (b === undefined) return;
-  const v = +e.target.value; ambBanks[+b].vol = v; e.target.nextElementSibling.textContent = v;
-  if (amb && amb.bank === +b) amb.lvl.gain.setTargetAtTime(lvlOf(v), ctx.currentTime, .03);
+$('bankVol').addEventListener('input', e => {
+  const v = +e.target.value; ambBanks[st.ambBank].vol = v;
+  if (amb && amb.bank === st.ambBank) amb.lvl.gain.setTargetAtTime(lvlOf(v), ctx.currentTime, .03);
 });
-$('ambFolders').addEventListener('change', e => { if (e.target.dataset.bvol !== undefined) save(); });
-$('ambFolders').onclick = e => { const kb = e.target.closest('[data-k]'); if (kb) { pickKey(+kb.dataset.k); return; } const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
+$('bankVol').addEventListener('change', save);
+$('ambKeys').onclick = e => { const kb = e.target.closest('[data-k]'); if (kb) pickKey(+kb.dataset.k); };
+$('ambFade').addEventListener('input', e => { st.ambFade = +e.target.value; });
+$('ambFade').addEventListener('change', save);
+$('ambFolders').onclick = e => { const c = e.target.closest('[data-b]'); if (!c) return; c.dataset.b === 'new' ? newAmbBank() : setAmbBank(+c.dataset.b); };
 $('ambRename').onclick = () => {
   const n = prompt('Nombre de este pad', ambBanks[st.ambBank].name);
   if (n && n.trim()) { ambBanks[st.ambBank].name = n.trim().slice(0, 20); save(); renderAmb(); }
@@ -1434,10 +1495,40 @@ if ('launchQueue' in window) launchQueue.setConsumer(async p => {
   $('opts').showModal(); renderFolderList(); showTab('archivo'); openSet(files);
 });
 
+// ---------- Perillas: giran con el dedo (arriba/abajo), la rueda o las flechas, y manejan un control deslizante oculto ----------
+const knobs = [];
+function knobSvg(f){
+  const a0 = -135, a = a0 + 270 * f, r = 18, c = 23, pt = d => [c + r * Math.sin(d * Math.PI / 180), c - r * Math.cos(d * Math.PI / 180)];
+  const [x0, y0] = pt(a0), [x1, y1] = pt(a), [xe, ye] = pt(135), big = a - a0 > 180 ? 1 : 0;
+  return `<svg viewBox="0 0 46 46" aria-hidden="true"><path d="M${x0} ${y0}A${r} ${r} 0 1 1 ${xe} ${ye}" fill="none" stroke="#34383f" stroke-width="4" stroke-linecap="round"/>`
+    + (f > .001 ? `<path d="M${x0} ${y0}A${r} ${r} 0 ${big} 1 ${x1} ${y1}" fill="none" stroke="var(--orange)" stroke-width="4" stroke-linecap="round"/>` : '')
+    + `<circle cx="23" cy="23" r="12" fill="#2b2e35" stroke="#41454d"/><line x1="23" y1="23" x2="${23 + 10 * Math.sin(a * Math.PI / 180)}" y2="${23 - 10 * Math.cos(a * Math.PI / 180)}" stroke="var(--fg)" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+}
+for (const el of document.querySelectorAll('.knob')) {
+  const inp = $(el.dataset.for), min = +inp.min, max = +inp.max, stepv = +(inp.step || 1), unit = el.dataset.unit || '';
+  el.tabIndex = 0; el.setAttribute('role', 'slider'); el.setAttribute('aria-label', el.dataset.label);
+  el.setAttribute('aria-valuemin', min); el.setAttribute('aria-valuemax', max);
+  el.innerHTML = `<span class="kdial"></span><span class="kt">${el.dataset.label}</span><span class="kv"></span>`;
+  const k = { el, inp, last: null, draw(){ const v = +inp.value; if (v === k.last) return; k.last = v; el.querySelector('.kdial').innerHTML = knobSvg((v - min) / (max - min)); el.querySelector('.kv').textContent = v + unit; el.setAttribute('aria-valuenow', v); } };
+  const set = v => { v = Math.min(max, Math.max(min, Math.round(v / stepv) * stepv)); if (v === +inp.value) return; inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); k.draw(); };
+  let y0 = 0, v0 = 0, moved = false;
+  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); y0 = e.clientY; v0 = +inp.value; moved = false; e.preventDefault(); });
+  el.addEventListener('pointermove', e => { if (!el.hasPointerCapture(e.pointerId)) return; moved = true; set(v0 + (y0 - e.clientY) / 160 * (max - min)); });
+  el.addEventListener('pointerup', () => { if (moved) inp.dispatchEvent(new Event('change', { bubbles: true })); });
+  el.addEventListener('dblclick', () => { set(+inp.defaultValue); inp.dispatchEvent(new Event('change', { bubbles: true })); });
+  el.addEventListener('wheel', e => { e.preventDefault(); set(+inp.value - Math.sign(e.deltaY) * stepv * (max - min > 20 ? 2 : 1)); inp.dispatchEvent(new Event('change', { bubbles: true })); }, { passive: false });
+  el.addEventListener('keydown', e => {
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]; if (!d) return;
+    e.preventDefault(); e.stopPropagation(); set(+inp.value + d * stepv * (e.shiftKey ? 5 : 1)); inp.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  knobs.push(k); k.draw();
+}
+function drawKnobs(){ knobs.forEach(k => k.draw()); }
+
 // ---------- Inicio ----------
 if (!pads[st.sel] && st.sel >= 12) st.sel = 0;
 $('quantize').checked = st.quantize; $('lockBpm').checked = st.lockBpm; $('ambAuto').checked = st.ambAuto;
-$('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol;
+$('vol').value = st.vol; $('volOut').textContent = st.vol; $('ambVol').value = st.ambVol; $('ambVolOut').textContent = st.ambVol; $('ambFade').value = st.ambFade;
 applyLevels();
 setBpm(pads[st.sel] ? pads[st.sel].bpm : 120, true);
 function showAudioInfo(){
