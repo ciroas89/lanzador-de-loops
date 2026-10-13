@@ -1,0 +1,683 @@
+<title>Afinador de Parches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,700;112,800;125,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: arriba el tambor elegido; en el centro la pantalla con la lectura y el dibujo del tambor con sus tensores; abajo afinaciones guardadas y ajustes. Tema oscuro como el Lanzador de Loops. */
+:root {
+  --bg: #0f1012;
+  --body: #191b1f;
+  --pad: #272a30;
+  --line: #34383f;
+  --fg: #f2f2f0;
+  --muted: #8d939c;
+  --lcd: #ffb23e;
+  --lcd-bg: #0b0c0e;
+  --orange: #ff6a1f;
+  --yellow: #ffc61a;
+  --ok: #3ddc84;          /* tensor afinado */
+  --subir: #ffc61a;       /* apretar */
+  --bajar: #ff6a1f;       /* aflojar */
+  --danger: #ff4d3d;
+  --on: #121315;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --sans: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 12px 48px; display: grid; gap: 14px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.hint { color: var(--muted); font-size: .8rem; margin: 0; }
+
+/* Barra superior */
+.top { display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+.brand h1 { font-family: var(--display); font-weight: 800; font-stretch: 125%; text-transform: uppercase; font-size: 1.5rem; margin: 0; letter-spacing: -.01em; }
+.brand span { color: var(--muted); font-size: .85rem; }
+.meter { width: 110px; height: 8px; border-radius: 4px; background: #0008; border: 1px solid var(--line); position: relative; overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); }
+.meter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fg); opacity: .6; }
+.mic { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; background: var(--fg); color: var(--on); font-weight: 700; padding: 10px 18px; min-height: 44px; }
+.mic svg { width: 20px; height: 20px; }
+.mic.on { background: var(--orange); }
+.mic.on svg { animation: oir 1.2s ease-in-out infinite; }
+@keyframes oir { 50% { transform: scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .mic.on svg { animation: none; } }
+
+/* Elegir tambor */
+.panel { background: var(--body); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.panel h2 { font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 0; font-weight: 600; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; background: var(--pad); border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: .85rem; color: var(--muted); min-height: 36px; }
+.chip[aria-checked="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--on); }
+.opts { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; background: var(--pad); border: 1px solid var(--line); border-radius: 10px; padding: 2px; }
+.seg button { background: none; border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: .88rem; color: var(--muted); min-height: 34px; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--on); }
+.inline { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+select, input[type=number], input[type=text] { background: var(--pad); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--fg); min-height: 34px; }
+input[type=number] { width: 92px; }
+input[type=range] { width: 100%; accent-color: var(--orange); }
+.btn { background: var(--pad); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-weight: 600; min-height: 36px; font-size: .88rem; }
+.btn:hover { border-color: var(--muted); }
+.btn:active { transform: translateY(1px); }
+.btn.lit { background: var(--fg); color: var(--on); border-color: var(--fg); }
+.check { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+.check input { accent-color: var(--orange); width: 16px; height: 16px; flex: none; }
+
+/* Zona principal */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "lcd drum" "spec drum"; grid-template-rows: auto 1fr; gap: 14px; align-items: start; }
+.main .lcd { grid-area: lcd; } .main .spec { grid-area: spec; } .main .drumcol { grid-area: drum; }
+.lcd { background: var(--lcd-bg); border: 1px solid #000; border-radius: 10px; padding: 14px 16px; font-family: var(--mono); color: var(--lcd); box-shadow: inset 0 2px 10px #000c; display: grid; gap: 6px; }
+.lcd .row { display: flex; justify-content: space-between; gap: 8px; font-size: .82rem; opacity: .85; text-transform: uppercase; }
+.lcd .hz { display: flex; align-items: baseline; gap: 8px; }
+.lcd .hz span { font-size: clamp(2.6rem, 11vw, 4rem); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.lcd .hz small { font-size: 1rem; opacity: .8; }
+.lcd .nota { font-size: 1.1rem; }
+.lcd .msg { min-height: 2.6em; color: var(--fg); font-family: var(--sans); font-size: .9rem; border-top: 1px solid #ffffff14; padding-top: 8px; }
+.lcd .msg.mal { color: var(--danger); }
+.lcd .msg.bien { color: var(--ok); }
+.spec { background: var(--lcd-bg); border: 1px solid #000; border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
+.spec canvas { width: 100%; height: 150px; display: block; cursor: crosshair; touch-action: manipulation; }
+
+.drum { position: relative; }
+.drum svg { width: 100%; max-width: 440px; display: block; margin: 0 auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.lug { cursor: pointer; }
+.lug circle.b { fill: var(--pad); stroke: var(--line); stroke-width: 2; }
+.lug text { fill: var(--fg); font: 700 13px var(--sans); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.lug.sel circle.b { stroke: var(--fg); stroke-width: 3; }
+.lug.sel circle.halo { fill: none; stroke: var(--fg); stroke-width: 2; opacity: .5; animation: halo 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes halo { from { transform: scale(1); opacity: .6; } to { transform: scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lug.sel circle.halo { animation: none; opacity: .4; } }
+.lug.ok circle.b { fill: var(--ok); stroke: var(--ok); } .lug.ok text { fill: var(--on); }
+.lug.subir circle.b { fill: var(--subir); stroke: var(--subir); } .lug.subir text { fill: var(--on); }
+.lug.bajar circle.b { fill: var(--bajar); stroke: var(--bajar); } .lug.bajar text { fill: var(--on); }
+.lugv { font: 600 12px var(--mono); text-anchor: middle; dominant-baseline: central; fill: var(--muted); pointer-events: none; }
+.lugv.ok { fill: var(--ok); } .lugv.subir { fill: var(--subir); } .lugv.bajar { fill: var(--bajar); }
+.cen1 { font: 600 10px var(--sans); letter-spacing: .14em; fill: var(--muted); text-anchor: middle; }
+.cen2 { font: 800 30px var(--display); fill: var(--fg); text-anchor: middle; }
+.cen3 { font: 500 12px var(--mono); fill: var(--lcd); text-anchor: middle; }
+.resumen { margin: 0 0 6px; text-align: center; font-size: .85rem; font-weight: 600; color: var(--fg); min-height: 1.2em; }
+.leyenda { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: .78rem; color: var(--muted); }
+.leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+.centro { display: grid; gap: 10px; justify-items: center; padding: 18px 8px; }
+.centro .big { font-family: var(--display); font-weight: 800; font-stretch: 112%; font-size: clamp(3rem, 14vw, 5rem); line-height: 1; }
+.gauge { width: 100%; max-width: 380px; height: 44px; position: relative; border-radius: 8px; background: linear-gradient(90deg, var(--bajar) 0 10%, var(--pad) 10% 45%, color-mix(in srgb, var(--ok) 45%, var(--pad)) 45% 55%, var(--pad) 55% 90%, var(--bajar) 90%); border: 1px solid var(--line); }
+.gauge::after { content: ""; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 2px; background: var(--fg); opacity: .35; }
+.gauge i { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; left: 50%; border-radius: 2px; background: var(--fg); box-shadow: 0 0 10px #000; transition: left .2s; }
+.gauge-lbl { width: 100%; max-width: 380px; display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); font-family: var(--mono); }
+.hist { font-family: var(--mono); font-size: .85rem; color: var(--muted); text-align: center; }
+
+.tgt { display: grid; gap: 10px; }
+.tgt .row-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Abajo */
+.lower { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.saved { display: grid; gap: 4px; }
+.saved-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #ffffff0d; }
+.saved-row .n { font-weight: 600; font-size: .92rem; }
+.saved-row .s { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+.saved-row .acc { display: flex; gap: 6px; }
+.intervalos { font-size: .82rem; color: var(--muted); display: grid; gap: 2px; }
+.intervalos b { color: var(--fg); font-weight: 600; }
+.field { display: grid; gap: 4px; font-size: .78rem; color: var(--muted); }
+.field output { color: var(--fg); }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+details summary { cursor: pointer; font-size: .74rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
+details[open] summary { margin-bottom: 8px; }
+ol.pasos { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
+ol.pasos b { color: var(--fg); font-weight: 600; }
+
+@media (max-width: 820px) {
+  .main, .lower { grid-template-columns: minmax(0, 1fr); }
+  .main { grid-template-areas: "lcd" "drum" "spec"; grid-template-rows: none; }
+  .lcd .hz span { font-size: 2.6rem; }
+  .lcd .msg { min-height: 0; }
+}
+@media (max-width: 480px) {
+  .brand span { display: none; }
+  .meter { width: 60px; }
+  .mic { padding: 10px 14px; }
+}
+</style>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Afinador</h1><span>de parches</span></div>
+    <div class="meter" title="Nivel del micrófono" aria-hidden="true"><i id="nivel"></i><b id="umbral"></b></div>
+    <button id="escuchar" class="mic" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <span>Escuchar</span>
+    </button>
+  </header>
+
+  <section class="panel" aria-label="Tambor">
+    <div class="chips" id="tambores" role="radiogroup" aria-label="Tambor"></div>
+    <div class="opts">
+      <div class="seg" id="parche" role="group" aria-label="Parche">
+        <button type="button" data-v="batidor">Batidor</button><button type="button" data-v="resonante">Resonante</button>
+      </div>
+      <div class="seg" id="modo" role="group" aria-label="Qué medir">
+        <button type="button" data-v="tensor">Por tensor</button><button type="button" data-v="centro">Nota del tambor</button>
+      </div>
+      <label class="inline" id="ntens-box">Tensores
+        <select id="ntens"><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option></select>
+      </label>
+    </div>
+  </section>
+
+  <div class="main">
+      <div class="lcd" aria-live="polite">
+        <div class="row"><span id="lcd-tambor"></span><span id="lcd-donde"></span></div>
+        <div class="hz"><span id="hz">---.-</span><small>Hz</small></div>
+        <div class="row nota"><span id="nota">—</span><span id="clar"></span></div>
+        <div class="msg" id="msg"></div>
+      </div>
+      <div class="spec">
+        <canvas id="espectro" aria-label="Espectro del último golpe"></canvas>
+        <p class="hint">Espectro del último golpe. La línea naranja es la lectura; si tomó otro sonido del parche, toca el pico correcto.</p>
+      </div>
+
+      <section class="panel drumcol" aria-label="Tambor y tensores">
+        <div id="vista-tensor" class="drum">
+          <svg id="tambor" viewBox="0 0 340 340" role="group" aria-label="Tensores del tambor"></svg>
+          <p class="resumen" id="resumen"></p>
+          <div class="leyenda"><span><i style="background:var(--ok)"></i>Afinado</span><span><i style="background:var(--subir)"></i>↑ Apretar</span><span><i style="background:var(--bajar)"></i>↓ Aflojar</span></div>
+        </div>
+        <div id="vista-centro" class="centro" hidden>
+          <div class="big" id="c-nota">—</div>
+          <div class="gauge" aria-hidden="true"><i id="c-aguja"></i></div>
+          <div class="gauge-lbl"><span>−50¢</span><span>en la nota</span><span>+50¢</span></div>
+          <div class="hist" id="c-hist"></div>
+          <p class="hint" style="text-align:center">Golpea en el centro del parche. Varios golpes seguidos deben dar casi lo mismo.</p>
+        </div>
+        <div class="tgt">
+          <div class="row-btns">
+            <div class="seg" id="obj-tipo" role="group" aria-label="Objetivo">
+              <button type="button" data-v="medio">Igualar al medio</button><button type="button" data-v="fijo">Frecuencia fija</button>
+            </div>
+            <label class="inline" id="obj-box"><input type="number" id="obj-hz" min="20" max="2000" step="0.1" inputmode="decimal" aria-label="Frecuencia objetivo en Hz"> Hz</label>
+            <button class="btn" type="button" id="obj-usar">Usar la última lectura</button>
+          </div>
+          <div class="row-btns" id="tensor-opts">
+            <label class="inline">Tolerancia
+              <select id="tol"><option value="0.5">±0,5 Hz</option><option value="1">±1 Hz</option><option value="2">±2 Hz</option></select>
+            </label>
+            <label class="inline">Orden
+              <select id="orden"><option value="circulo">En círculo</option><option value="estrella">En estrella</option></select>
+            </label>
+            <label class="check"><input type="checkbox" id="avanzar"> Pasar solo al siguiente</label>
+          </div>
+          <div class="row-btns">
+            <button class="btn" type="button" id="borrar">Borrar lecturas</button>
+            <button class="btn lit" type="button" id="guardar">Guardar afinación</button>
+          </div>
+        </div>
+      </section>
+  </div>
+
+  <div class="lower">
+    <section class="panel">
+      <h2>Mis afinaciones</h2>
+      <div class="saved" id="guardadas"></div>
+      <div class="intervalos" id="intervalos"></div>
+    </section>
+    <section class="panel">
+      <details open>
+        <summary>Cómo usar</summary>
+        <ol class="pasos">
+          <li><b>Apaga el otro parche</b> (pon el tambor sobre una toalla o apoya la mano) y suelta la bordonera del redoblante.</li>
+          <li>Pon el celular a <b>20–40 cm</b> del tambor, en un lugar callado.</li>
+          <li><b>Por tensor:</b> golpea suave con la baqueta a <b>2–3 cm del aro</b>, justo frente al tensor marcado. Siempre con la misma fuerza.</li>
+          <li>Aprieta o afloja según la flecha hasta que todos los tensores queden en verde.</li>
+          <li><b>Nota del tambor:</b> golpea en el centro para ver la nota que suena el tambor completo.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Ajustes</summary>
+        <div class="fields">
+          <label class="field">Sensibilidad <output id="sens-v"></output>
+            <input type="range" id="sens" min="0" max="1" step="0.05">
+          </label>
+          <label class="field">La de referencia (Hz)
+            <input type="number" id="la" min="415" max="466" step="1">
+          </label>
+          <label class="field">Buscar desde (Hz)
+            <input type="number" id="rmin" min="20" max="2000" step="1">
+          </label>
+          <label class="field">Buscar hasta (Hz)
+            <input type="number" id="rmax" min="30" max="4000" step="1">
+          </label>
+        </div>
+        <p class="hint" style="margin-top:8px">El rango cambia según el tambor y el modo. <button class="btn" type="button" id="rango-def" style="min-height:28px;padding:2px 10px">Restablecer rango</button></p>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script src="analisis.js"></script>
+<script>
+'use strict';
+const A = window.Afinador;
+const $ = s => document.querySelector(s);
+
+// Rangos de búsqueda (Hz) del golpe en el tensor y del golpe en el centro, y tensores más comunes
+const TAMBORES = [
+  { id: 'red14', nombre: 'Redoblante 14"', corto: 'Redoblante', tensores: 10, tensor: [150, 750], centro: [110, 450] },
+  { id: 't8', nombre: 'Tom 8"', tensores: 6, tensor: [120, 650], centro: [90, 420] },
+  { id: 't10', nombre: 'Tom 10"', tensores: 6, tensor: [90, 550], centro: [70, 360] },
+  { id: 't12', nombre: 'Tom 12"', tensores: 6, tensor: [75, 480], centro: [60, 300] },
+  { id: 't13', nombre: 'Tom 13"', tensores: 6, tensor: [70, 420], centro: [55, 270] },
+  { id: 't14', nombre: 'Tom de piso 14"', corto: 'Piso 14"', tensores: 8, tensor: [60, 360], centro: [45, 230] },
+  { id: 't16', nombre: 'Tom de piso 16"', corto: 'Piso 16"', tensores: 8, tensor: [50, 320], centro: [40, 200] },
+  { id: 'b20', nombre: 'Bombo 20"', tensores: 8, tensor: [40, 220], centro: [32, 130], captura: 0.8 },
+  { id: 'b22', nombre: 'Bombo 22"', tensores: 10, tensor: [36, 200], centro: [28, 120], captura: 0.8 },
+];
+
+// ---------- Estado (se guarda en el dispositivo) ----------
+const guardarLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const cargarLS = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const est = Object.assign({
+  tambor: 't12', parche: 'batidor', modo: 'tensor', sel: 0,
+  tensores: {}, lecturas: {}, golpesCentro: {}, objetivo: {},
+  tol: 1, orden: 'circulo', avanzar: true, sensib: 0.5, la: 440, rangos: {},
+}, cargarLS('afinador-estado', {}));
+let guardadas = cargarLS('afinador-guardadas', []);
+const persistir = () => guardarLS('afinador-estado', est);
+
+const tam = () => TAMBORES.find(t => t.id === est.tambor) || TAMBORES[3];
+const nTens = () => est.tensores[est.tambor] || tam().tensores;
+const clave = () => `${est.tambor}|${est.parche}`;
+const rango = () => est.rangos[`${est.tambor}|${est.modo}`] || tam()[est.modo];
+function lecturas() {
+  let l = est.lecturas[clave()];
+  if (!Array.isArray(l) || l.length !== nTens()) l = est.lecturas[clave()] = Array(nTens()).fill(null);
+  return l;
+}
+const golpesCentro = () => (est.golpesCentro[clave()] ||= []);
+function mediana(v) {
+  const s = v.filter(x => x != null).sort((a, b) => a - b);
+  if (!s.length) return null;
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function objetivo() {
+  const o = est.objetivo[clave()];
+  if (o != null) return o;
+  return est.modo === 'tensor' ? mediana(lecturas()) : null;
+}
+// Orden de golpes: alrededor, o en estrella (pares opuestos), que es como se aprietan los tensores
+function orden() {
+  const n = nTens(), idx = [...Array(n).keys()];
+  if (est.orden !== 'estrella' || n % 2) return idx;
+  const m = n / 2, inicios = [...idx.slice(0, m).filter(i => i % 2 === 0), ...idx.slice(0, m).filter(i => i % 2)];
+  return inicios.flatMap(i => [i, i + m]);
+}
+const siguiente = i => { const o = orden(); return o[(o.indexOf(i) + 1) % o.length]; };
+
+const fmt = f => f == null ? '---.-' : f.toFixed(1).replace('.', ',');
+const fmtD = d => (Math.abs(d) < 0.05 ? '0,0' : Math.abs(d).toFixed(1).replace('.', ','));
+function txtNota(f) {
+  const n = A.nota(f, est.la);
+  return `${n.nombre}${n.octava} ${n.cents >= 0 ? '+' : '−'}${Math.abs(n.cents)}¢`;
+}
+function estadoTensor(f, obj) {
+  if (f == null || obj == null) return '';
+  const d = Math.round((f - obj) * 10) / 10;  // se compara lo mismo que se ve en pantalla
+  return Math.abs(d) <= est.tol ? 'ok' : d < 0 ? 'subir' : 'bajar';
+}
+
+// ---------- Pantalla ----------
+let ultimo = null;  // { res, f, lug, clave, rango }
+function msg(t, tipo = '') { const m = $('#msg'); m.textContent = t; m.className = 'msg ' + tipo; }
+
+function render() {
+  const t = tam(), modoT = est.modo === 'tensor';
+  // Selectores
+  $('#tambores').innerHTML = TAMBORES.map(x => `<button type="button" class="chip" role="radio" aria-checked="${x.id === est.tambor}" data-id="${x.id}">${x.corto || x.nombre}</button>`).join('');
+  for (const [g, v] of [['#parche', est.parche], ['#modo', est.modo], ['#obj-tipo', est.objetivo[clave()] != null ? 'fijo' : 'medio']])
+    for (const b of document.querySelectorAll(g + ' button')) b.setAttribute('aria-pressed', b.dataset.v === v);
+  $('#ntens').value = nTens();
+  $('#ntens-box').hidden = !modoT;
+  $('#tensor-opts').hidden = !modoT;
+  $('#vista-tensor').hidden = !modoT;
+  $('#vista-centro').hidden = modoT;
+  $('#tol').value = est.tol; $('#orden').value = est.orden; $('#avanzar').checked = est.avanzar;
+  const obj = objetivo(), fijo = est.objetivo[clave()] != null;
+  $('#obj-box').hidden = !fijo;
+  if (fijo && document.activeElement !== $('#obj-hz')) $('#obj-hz').value = obj.toFixed(1);
+  if (est.sel >= nTens()) est.sel = 0;
+
+  $('#lcd-tambor').textContent = `${t.nombre} · ${est.parche}`;
+  // Lectura principal: la del último golpe, o la del tensor elegido
+  let f = null, lug = est.sel;
+  if (ultimo && ultimo.clave === clave() && ultimo.modo === est.modo) { f = ultimo.f; lug = ultimo.lug; }
+  else if (modoT) f = lecturas()[est.sel];
+  else f = golpesCentro().at(-1) ?? null;
+  $('#lcd-donde').textContent = modoT ? `Tensor ${lug + 1}` : 'Centro';
+  $('#hz').textContent = fmt(f);
+  $('#nota').textContent = f ? txtNota(f) : '—';
+  $('#clar').textContent = ultimo && ultimo.clave === clave() && ultimo.res ? `claridad ${Math.round(ultimo.res.claridad)} dB` : '';
+
+  if (modoT) dibujarTambor(obj); else dibujarCentro(obj);
+  dibujarEspectro();
+  renderGuardadas();
+  $('#sens').value = est.sensib; $('#sens-v').textContent = Math.round(est.sensib * 100) + ' %';
+  $('#la').value = est.la;
+  const r = rango(); $('#rmin').value = r[0]; $('#rmax').value = r[1];
+  persistir();
+}
+
+function dibujarTambor(obj) {
+  const n = nTens(), l = lecturas(), C = 170, R = 112, RL = 146, RV = 90;
+  let s = `<circle cx="${C}" cy="${C}" r="${R + 14}" fill="#0c0d0f" stroke="var(--line)" stroke-width="6"/>
+    <circle cx="${C}" cy="${C}" r="${R}" fill="#e9e4d8" opacity=".08"/>`;
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + 2 * Math.PI * i / n, x = C + RL * Math.cos(a), y = C + RL * Math.sin(a);
+    const vx = C + RV * Math.cos(a), vy = C + RV * Math.sin(a), e = estadoTensor(l[i], obj);
+    const d = l[i] != null && obj != null ? l[i] - obj : null;
+    const flecha = e === 'subir' ? '↑' : e === 'bajar' ? '↓' : e === 'ok' ? '✓' : '';
+    const desc = l[i] == null ? 'sin lectura' : `${fmt(l[i])} Hz${e === 'ok' ? ', afinado' : e === 'subir' ? ', apretar' : e === 'bajar' ? ', aflojar' : ''}`;
+    s += `<g class="lug ${e} ${i === est.sel ? 'sel' : ''}" data-i="${i}" role="button" tabindex="0" aria-label="Tensor ${i + 1}: ${desc}">
+      ${i === est.sel ? `<circle class="halo" cx="${x}" cy="${y}" r="17"/>` : ''}
+      <circle class="b" cx="${x}" cy="${y}" r="17"/><text x="${x}" y="${y}">${i + 1}</text></g>`;
+    if (l[i] != null) {
+      s += `<text class="lugv ${e}" x="${vx}" y="${vy - 7}">${fmt(l[i])}</text>`;
+      if (d != null) s += `<text class="lugv ${e}" x="${vx}" y="${vy + 8}">${flecha}${e === 'ok' ? '' : ' ' + fmtD(d)}</text>`;
+    }
+  }
+  const vals = l.filter(v => v != null);
+  const dif = vals.length > 1 ? Math.max(...vals) - Math.min(...vals) : null;
+  s += `<text class="cen1" x="${C}" y="${C - 30}">${est.objetivo[clave()] != null ? 'FIJO' : 'OBJETIVO'}</text>
+    <text class="cen2" x="${C}" y="${C + 2}">${obj != null ? fmt(obj) : '—'}</text>
+    <text class="cen3" x="${C}" y="${C + 22}">${obj != null ? 'Hz' : 'golpea'}</text>
+    <text class="cen3" x="${C}" y="${C + 38}">${obj != null ? txtNota(obj) : 'el tensor 1'}</text>`;
+  $('#tambor').innerHTML = s;
+  const afinados = l.filter(v => estadoTensor(v, obj) === 'ok').length;
+  $('#resumen').textContent = dif == null ? '' : `${afinados} de ${n} afinados · diferencia máxima ${fmtD(dif)} Hz`;
+}
+
+function dibujarCentro(obj) {
+  const g = golpesCentro(), f = g.at(-1);
+  if (!f) { $('#c-nota').textContent = '—'; $('#c-aguja').style.left = '50%'; $('#c-hist').textContent = ''; return; }
+  const n = A.nota(f, est.la);
+  $('#c-nota').textContent = `${n.nombre}${n.octava}`;
+  $('#c-aguja').style.left = (50 + n.cents) + '%';
+  let h = 'Últimos golpes: ' + g.slice(-5).map(fmt).join(' · ') + ' Hz';
+  if (obj != null) {
+    const d = f - obj;
+    h += ` — objetivo ${fmt(obj)} Hz: ` + (estadoTensor(f, obj) === 'ok' ? 'en el objetivo' : d < 0 ? `apretar (${fmtD(d)} Hz abajo)` : `aflojar (${fmtD(d)} Hz arriba)`);
+  }
+  $('#c-hist').textContent = h;
+}
+
+// Espectro del último golpe, con escala logarítmica de frecuencia
+const cv = $('#espectro');
+function dibujarEspectro() {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const r = ultimo && ultimo.clave === clave() && ultimo.modo === est.modo ? ultimo : null;
+  const [fmin, fmax] = r ? r.rango : rango();
+  const X = f => W * Math.log(f / fmin) / Math.log(fmax / fmin);
+  // Marcas de frecuencia
+  g.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--mono');
+  g.fillStyle = '#8d939c'; g.strokeStyle = '#ffffff12'; g.lineWidth = 1;
+  for (const f of [30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 700, 1000]) {
+    if (f < fmin || f > fmax) continue;
+    const x = Math.round(X(f)) + .5;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H - 14); g.stroke();
+    g.fillText(f, x + 2, H - 3);
+  }
+  if (!r || !r.res || !r.res.espectro) {
+    g.fillText(r ? 'Golpe sin sonido claro' : 'Aquí aparece el espectro de cada golpe', 8, 16);
+    return;
+  }
+  const e = r.res.espectro, lo = r.res.fondo - 6, hi = r.res.tope + 3, Y = v => (H - 16) * (1 - (Math.max(lo, v) - lo) / (hi - lo));
+  g.beginPath(); g.moveTo(0, H - 16);
+  for (let j = 0; j < e.length; j++) g.lineTo(W * j / (e.length - 1), Y(e[j]));
+  g.lineTo(W, H - 16); g.closePath();
+  g.fillStyle = '#ffb23e22'; g.fill();
+  g.strokeStyle = '#ffb23e'; g.lineWidth = 1.2; g.stroke();
+  for (const p of r.res.picos) {
+    g.fillStyle = '#f2f2f0'; g.beginPath(); g.arc(X(p.f), Y(p.db), 3, 0, 7); g.fill();
+  }
+  const x = X(r.f);
+  g.strokeStyle = '#ff6a1f'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H - 16); g.stroke();
+  g.fillStyle = '#ff6a1f'; g.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--mono');
+  const t = fmt(r.f) + ' Hz', tw = g.measureText(t).width;
+  g.fillText(t, Math.min(x + 4, W - tw - 2), 12);
+}
+
+// Tocar otro pico del espectro cambia la lectura de ese golpe
+cv.addEventListener('click', ev => {
+  if (!ultimo || !ultimo.res || !ultimo.res.picos || ultimo.clave !== clave()) return;
+  const W = cv.clientWidth, x = ev.offsetX, [fmin, fmax] = ultimo.rango;
+  const X = f => W * Math.log(f / fmin) / Math.log(fmax / fmin);
+  let mejor = null;
+  for (const p of ultimo.res.picos) if (Math.abs(X(p.f) - x) < 24 && (!mejor || Math.abs(X(p.f) - x) < Math.abs(X(mejor.f) - x))) mejor = p;
+  if (!mejor) return;
+  ultimo.f = mejor.f;
+  if (ultimo.modo === 'tensor') {
+    const l = lecturas();
+    // Si este cambio pone el tensor en otro modo que los demás, los demás ya no sirven de guía
+    const otros = l.filter((v, i) => v != null && i !== ultimo.lug);
+    if (otros.length && Math.abs(mejor.f / mediana(otros) - 1) > 0.15) {
+      l.fill(null);
+      msg(`Lectura cambiada a ${fmt(mejor.f)} Hz. Como es otro sonido del parche, se borraron los demás tensores: vuelve a golpearlos.`);
+    } else msg(`Lectura del tensor ${ultimo.lug + 1} cambiada a ${fmt(mejor.f)} Hz.`);
+    l[ultimo.lug] = mejor.f;
+  } else {
+    const g = golpesCentro(); g[g.length - 1] = mejor.f;
+    msg(`Lectura cambiada a ${fmt(mejor.f)} Hz.`);
+  }
+  render();
+});
+
+// ---------- Micrófono ----------
+let ctx = null, stream = null, det = null, nodo = null, wake = null, rafId = 0;
+async function escuchar() {
+  if (ctx) return detener();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    msg('Este navegador no deja usar el micrófono aquí. Abre la app desde su enlace https.', 'mal'); return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  } catch (e) {
+    msg(e && e.name === 'NotAllowedError' ? 'Sin permiso para el micrófono. Actívalo en los ajustes del navegador para este sitio.' : 'No se pudo abrir el micrófono.', 'mal');
+    return;
+  }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await ctx.resume();
+  const fuente = ctx.createMediaStreamSource(stream), mudo = ctx.createGain();
+  mudo.gain.value = 0; mudo.connect(ctx.destination);
+  det = new A.Detector(ctx.sampleRate, { sensibilidad: est.sensib, captura: tam().captura || 0.5 });
+  const recibir = datos => { for (const g of det.push(datos)) procesar(g); };
+  try {
+    const codigo = `class Captura extends AudioWorkletProcessor {
+      constructor() { super(); this.b = new Float32Array(1024); this.n = 0; }
+      process(ins) {
+        const c = ins[0] && ins[0][0];
+        if (c) for (let k = 0; k < c.length; k++) {
+          this.b[this.n++] = c[k];
+          if (this.n === 1024) { this.port.postMessage(this.b, [this.b.buffer]); this.b = new Float32Array(1024); this.n = 0; }
+        }
+        return true;
+      }
+    }
+    registerProcessor('captura', Captura);`;
+    const url = URL.createObjectURL(new Blob([codigo], { type: 'application/javascript' }));
+    await ctx.audioWorklet.addModule(url);
+    nodo = new AudioWorkletNode(ctx, 'captura', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit' });
+    nodo.port.onmessage = e => recibir(e.data);
+  } catch {
+    // Navegadores viejos sin AudioWorklet
+    nodo = ctx.createScriptProcessor(2048, 1, 1);
+    nodo.onaudioprocess = e => recibir(new Float32Array(e.inputBuffer.getChannelData(0)));
+  }
+  fuente.connect(nodo); nodo.connect(mudo);
+  try { wake = await navigator.wakeLock.request('screen'); } catch {}
+  $('#escuchar').classList.add('on'); $('#escuchar span').textContent = 'Detener';
+  msg(est.modo === 'tensor' ? `Escuchando. Golpea suave cerca del tensor ${est.sel + 1}.` : 'Escuchando. Golpea en el centro del parche.');
+  const medidor = () => {
+    const db = v => Math.max(0, Math.min(100, (20 * Math.log10(v + 1e-9) + 70) / 70 * 100));
+    $('#nivel').style.width = db(det.nivel) + '%';
+    $('#umbral').style.left = db(det.umbral()) + '%';
+    rafId = requestAnimationFrame(medidor);
+  };
+  medidor();
+}
+function detener() {
+  cancelAnimationFrame(rafId);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (ctx) ctx.close();
+  if (wake) wake.release().catch(() => {});
+  ctx = stream = det = nodo = wake = null;
+  $('#nivel').style.width = '0';
+  $('#escuchar').classList.remove('on'); $('#escuchar span').textContent = 'Escuchar';
+  msg('Micrófono apagado.');
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && ctx && !wake) try { wake = await navigator.wakeLock.request('screen'); } catch {}
+  if (document.visibilityState === 'hidden') wake = null;
+});
+
+function procesar(golpe) {
+  const r = rango(), modoT = est.modo === 'tensor';
+  const l = lecturas();
+  // Guía: lo que vienen marcando los otros tensores, para seguir siempre el mismo sonido del parche
+  const guia = modoT ? (est.objetivo[clave()] ?? mediana(l.filter((v, i) => i !== est.sel))) : null;
+  const res = A.analizar(golpe.muestras, ctx.sampleRate, { fmin: r[0], fmax: r[1], modo: est.modo, guia });
+  ultimo = { res, f: res.f, lug: est.sel, clave: clave(), modo: est.modo, rango: r.slice() };
+  if (res.error) {
+    ultimo.f = null;
+    msg('No se entendió el golpe. Repite, o apaga el otro parche y aleja ruidos.', 'mal');
+    render(); return;
+  }
+  const fuerte = golpe.pico > 0.98 ? ' Golpe muy fuerte: el micrófono se saturó, golpea más suave o aleja el celular.' : '';
+  if (modoT) {
+    const i = est.sel;
+    l[i] = res.f;
+    const obj = objetivo(), e = estadoTensor(res.f, obj), d = obj != null ? res.f - obj : 0;
+    const que = e === 'ok' ? 'afinado' : e === 'subir' ? `apretar (${fmtD(d)} Hz abajo)` : e === 'bajar' ? `aflojar (${fmtD(d)} Hz arriba)` : 'primera lectura';
+    if (est.avanzar) est.sel = siguiente(i);
+    msg(`Tensor ${i + 1}: ${que}.${est.avanzar ? ` Ahora el tensor ${est.sel + 1}.` : ''}${fuerte}`, e === 'ok' ? 'bien' : '');
+  } else {
+    const g = golpesCentro(); g.push(res.f); if (g.length > 8) g.shift();
+    msg(`Nota del tambor: ${txtNota(res.f)}.${fuerte}`);
+  }
+  render();
+}
+
+// ---------- Controles ----------
+$('#escuchar').addEventListener('click', escuchar);
+$('#tambores').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  est.tambor = b.dataset.id; est.sel = 0; ultimo = null;
+  if (det) det.captura = tam().captura || 0.5;
+  render();
+});
+$('#tambores').addEventListener('keydown', e => {
+  if (!['ArrowRight', 'ArrowLeft'].includes(e.key)) return;
+  const i = TAMBORES.findIndex(t => t.id === est.tambor) + (e.key === 'ArrowRight' ? 1 : -1);
+  est.tambor = TAMBORES[(i + TAMBORES.length) % TAMBORES.length].id; est.sel = 0; ultimo = null; render();
+  $('#tambores .chip[aria-checked="true"]').focus();
+});
+$('#parche').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; est.parche = b.dataset.v; est.sel = 0; ultimo = null; render(); });
+$('#modo').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; est.modo = b.dataset.v; ultimo = null; render(); });
+$('#ntens').addEventListener('change', e => { est.tensores[est.tambor] = +e.target.value; est.sel = 0; render(); });
+$('#tambor').addEventListener('click', e => {
+  const g = e.target.closest('.lug'); if (!g) return;
+  est.sel = +g.dataset.i; ultimo = null;
+  msg(`Golpea cerca del tensor ${est.sel + 1}.`); render();
+});
+$('#tambor').addEventListener('keydown', e => {
+  const g = e.target.closest('.lug'); if (!g) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); est.sel = +g.dataset.i; ultimo = null; render(); $(`.lug[data-i="${est.sel}"]`).focus(); }
+});
+$('#obj-tipo').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'medio') delete est.objetivo[clave()];
+  else if (est.objetivo[clave()] == null) {
+    const base = objetivo() ?? (est.modo === 'centro' ? golpesCentro().at(-1) : null);
+    est.objetivo[clave()] = base ?? Math.round(Math.sqrt(rango()[0] * rango()[1]));
+  }
+  render();
+});
+$('#obj-hz').addEventListener('change', e => {
+  const v = parseFloat(String(e.target.value).replace(',', '.'));
+  if (v > 0) est.objetivo[clave()] = v;
+  render();
+});
+$('#obj-usar').addEventListener('click', () => {
+  const f = est.modo === 'tensor' ? (ultimo && ultimo.clave === clave() && ultimo.f) || lecturas()[est.sel] : golpesCentro().at(-1);
+  if (!f) { msg('Todavía no hay lectura para usar como objetivo.'); return; }
+  est.objetivo[clave()] = Math.round(f * 10) / 10;
+  msg(`Objetivo fijo en ${fmt(f)} Hz.`); render();
+});
+$('#tol').addEventListener('change', e => { est.tol = +e.target.value; render(); });
+$('#orden').addEventListener('change', e => { est.orden = e.target.value; render(); });
+$('#avanzar').addEventListener('change', e => { est.avanzar = e.target.checked; render(); });
+$('#borrar').addEventListener('click', () => {
+  if (est.modo === 'tensor') lecturas().fill(null); else est.golpesCentro[clave()] = [];
+  est.sel = 0; ultimo = null; msg('Lecturas borradas.'); render();
+});
+$('#guardar').addEventListener('click', () => {
+  const modoT = est.modo === 'tensor';
+  const hz = modoT ? objetivo() : (est.objetivo[clave()] ?? mediana(golpesCentro().slice(-3)));
+  if (hz == null) { msg('Golpea primero para tener algo que guardar.'); return; }
+  const entrada = { id: Date.now(), tambor: est.tambor, parche: est.parche, modo: est.modo, hz: Math.round(hz * 10) / 10 };
+  // Una sola afinación por tambor, parche y modo: la nueva reemplaza a la anterior
+  guardadas = guardadas.filter(g => !(g.tambor === entrada.tambor && g.parche === entrada.parche && g.modo === entrada.modo));
+  guardadas.push(entrada);
+  guardarLS('afinador-guardadas', guardadas);
+  msg(`Guardado: ${tam().nombre}, ${est.parche}, ${fmt(entrada.hz)} Hz.`, 'bien'); render();
+});
+$('#guardadas').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const g = guardadas.find(x => x.id === +b.dataset.id); if (!g) return;
+  if (b.dataset.a === 'borrar') { guardadas = guardadas.filter(x => x !== g); guardarLS('afinador-guardadas', guardadas); }
+  else {
+    Object.assign(est, { tambor: g.tambor, parche: g.parche, modo: g.modo, sel: 0 });
+    est.objetivo[clave()] = g.hz; ultimo = null;
+    msg(`Objetivo: ${fmt(g.hz)} Hz. Golpea para comparar.`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  render();
+});
+function renderGuardadas() {
+  const nombre = id => (TAMBORES.find(t => t.id === id) || {}).nombre || id;
+  const lista = guardadas.slice().sort((a, b) => TAMBORES.findIndex(t => t.id === a.tambor) - TAMBORES.findIndex(t => t.id === b.tambor) || a.parche.localeCompare(b.parche));
+  $('#guardadas').innerHTML = lista.length ? lista.map(g => `<div class="saved-row">
+      <div><div class="n">${nombre(g.tambor)} · ${g.parche}</div><div class="s">${g.modo === 'tensor' ? 'tensores' : 'nota'} · ${fmt(g.hz)} Hz · ${txtNota(g.hz)}</div></div>
+      <div class="acc"><button class="btn" type="button" data-a="usar" data-id="${g.id}">Usar</button><button class="btn" type="button" data-a="borrar" data-id="${g.id}" aria-label="Borrar">✕</button></div>
+    </div>`).join('') : '<p class="hint">Cuando un tambor quede como te gusta, toca «Guardar afinación» para repetirla otro día.</p>';
+  // Intervalos entre tambores (con la nota del batidor)
+  const notas = lista.filter(g => g.modo === 'centro' && g.parche === 'batidor').sort((a, b) => b.hz - a.hz);
+  $('#intervalos').innerHTML = notas.length > 1 ? '<h2 style="margin-top:6px">Entre tambores</h2>' + notas.slice(1).map((g, i) =>
+    `<div>${nombre(notas[i].tambor)} → ${nombre(g.tambor)}: <b>${A.intervalo(g.hz, notas[i].hz)}</b></div>`).join('') : '';
+}
+
+// Ajustes
+$('#sens').addEventListener('input', e => { est.sensib = +e.target.value; if (det) det.sensibilidad = est.sensib; $('#sens-v').textContent = Math.round(est.sensib * 100) + ' %'; persistir(); });
+$('#la').addEventListener('change', e => { const v = +e.target.value; if (v >= 415 && v <= 466) est.la = v; render(); });
+for (const id of ['#rmin', '#rmax']) $(id).addEventListener('change', () => {
+  const a = +$('#rmin').value, b = +$('#rmax').value;
+  if (a >= 20 && b > a * 1.5) est.rangos[`${est.tambor}|${est.modo}`] = [a, b];
+  render();
+});
+$('#rango-def').addEventListener('click', () => { delete est.rangos[`${est.tambor}|${est.modo}`]; render(); });
+window.addEventListener('resize', dibujarEspectro);
+
+if (!est.lecturas[clave()] || !lecturas().some(v => v != null)) msg('Toca «Escuchar» y golpea suave cerca del tensor 1.');
+else msg('Toca «Escuchar» para seguir afinando.');
+render();
+</script>

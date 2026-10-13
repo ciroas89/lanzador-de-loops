@@ -28,3 +28,23 @@ python3 build.py ../docs
 ```
 
 Luego copia el contenido de `docs/` a la rama `gh-pages` para publicarlo.
+
+## Afinador de parches
+
+App aparte para afinar parches de batería con el micrófono del celular: iguala los tensores (golpe cerca de cada tensor) y mide la nota de cada tambor (golpe en el centro). También se instala y funciona sin internet.
+
+**Abrir el afinador:** https://ciroas89.github.io/lanzador-de-loops/afinador/
+
+- `afinador/index.html`: la interfaz.
+- `afinador/analisis.js`: el motor (detección de golpes y medición de frecuencia).
+- `afinador/prueba.js`: prueba de precisión con golpes simulados (`node afinador/prueba.js`).
+- `afinador/build.py`: genera la versión publicada en `docs/afinador/`.
+
+Después de cambiar el afinador:
+
+```
+cd afinador
+python3 build.py
+```
+
+Luego copia `docs/afinador/` a la rama `gh-pages` (dentro de la carpeta `afinador/`) para publicarlo.
